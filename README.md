@@ -1,10 +1,4 @@
-# Omegaquad
+# Haxagon
 
-A framework for making games using Macroquad.
-
-After writing maybe 5 games and finding myself always going to the previous project to copy-paste code
-I decided I was about done with that and I should make a template.
-
-This code displays a logo screen and an example with textboxes.
-
-As discussed in the license, you can use the code but please don't steal the assets.
+Draw loops on the board with your mouse. Blobs of 4 or more similar marbles are cleared for points.
+Draw a hexagon with all 6 corners of the same color to clear everything of that color.

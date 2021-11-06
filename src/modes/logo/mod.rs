@@ -2,6 +2,7 @@ use crate::{
     assets::Assets,
     boilerplates::{FrameInfo, Gamemode, GamemodeDrawer, Transition},
     controls::{Control, InputSubscriber},
+    modes::ModeSplash,
     utils::draw::{self, hexcolor},
     HEIGHT, WIDTH,
 };
@@ -13,9 +14,7 @@ use rand::Rng;
 
 use std::f32::consts::TAU;
 
-use super::ModeExample;
-
-const BANNER_DISPLAY_SIZE: f32 = WIDTH * 0.6;
+const BANNER_DISPLAY_SIZE: f32 = 128.0;
 const BANNER_START_TIME: f64 = 0.25;
 
 #[derive(Clone)]
@@ -98,7 +97,7 @@ impl Gamemode for ModeLogo {
             macroquad::audio::stop_sound(assets.sounds.title_jingle);
 
             // Put your next state here!
-            Transition::Swap(Box::new(ModeExample::new(assets)))
+            Transition::Swap(Box::new(ModeSplash::new()))
         } else {
             Transition::None
         }

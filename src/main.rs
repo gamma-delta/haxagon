@@ -6,6 +6,8 @@ mod controls;
 mod modes;
 mod utils;
 
+mod model;
+
 // `getrandom` doesn't support WASM so we use quadrand's rng for it.
 #[cfg(target_arch = "wasm32")]
 mod wasm_random_impl;
@@ -20,11 +22,11 @@ use crate::{
 
 use macroquad::prelude::*;
 
-const WIDTH: f32 = 320.0;
-const HEIGHT: f32 = 240.0;
+const WIDTH: f32 = 160.0;
+const HEIGHT: f32 = 144.0;
 const ASPECT_RATIO: f32 = WIDTH / HEIGHT;
 
-const UPDATES_PER_DRAW: u64 = 100;
+const UPDATES_PER_DRAW: u64 = 1;
 const UPDATE_DT: f32 = 1.0 / (30.0 * UPDATES_PER_DRAW as f32);
 
 /// The `macroquad::main` macro uses this.
@@ -126,6 +128,11 @@ async fn gameloop() {
         frames_ran: 0,
     };
     loop {
+        if frame_info.frames_ran <= 300 {
+            let (mx, my) = mouse_position();
+            macroquad::rand::srand(mx.to_bits() as u64 + ((my.to_bits() as u64) << 32));
+        }
+
         frame_info.dt = macroquad::time::get_frame_time();
 
         let drawer = match draw_rx.try_recv() {

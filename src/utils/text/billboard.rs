@@ -1,7 +1,7 @@
 use std::{f64::consts::TAU, iter::FlatMap};
 
 use anyhow::{bail, Context};
-use macroquad::prelude::{Color, Rect, Texture2D, Vec2, WHITE};
+use macroquad::prelude::{vec2, Color, Rect, Texture2D, Vec2, WHITE};
 use once_cell::sync::Lazy;
 use regex::Regex;
 
@@ -27,6 +27,12 @@ pub struct Billboard {
     /// the upper-left corner of the billboard.
     pub offset: Vec2,
 
+    pub background: Option<BillboardBackground>,
+}
+
+#[derive(Debug, Clone)]
+/// Optiona, integrated patch9 for a billboard.
+pub struct BillboardBackground {
     /// The patch9 texture used to draw this
     pub patch9: Texture2D,
     /// The size of the patch9 tile
@@ -42,19 +48,45 @@ impl Billboard {
         text: Vec<TextSpan>,
         pos: Vec2,
         offset: Vec2,
-        patch9: Texture2D,
-        tile_size: f32,
-        width: usize,
-        height: usize,
+        background: Option<BillboardBackground>,
     ) -> Self {
         Self {
             text,
             pos,
             offset,
-            patch9,
-            tile_size,
-            width,
-            height,
+            background,
+        }
+    }
+
+    /// Create a billboard with the given info, then draw it (and return it, in case you want it.)
+    pub fn draw_now(
+        text: Vec<TextSpan>,
+        pos: Vec2,
+        offset: Vec2,
+        background: Option<BillboardBackground>,
+    ) -> Self {
+        let bb = Billboard::new(text, pos, offset, background);
+        bb.draw();
+        bb
+    }
+
+    /// Use some default settings for drawing some plain-ish text.
+    /// Note that `pos` is the position of the upper-left hand corner of the first character.
+    pub fn new_simple(text: String, pos: Vec2, color: Color, font: Texture2D) -> Self {
+        Self {
+            text: vec![TextSpan {
+                text,
+                markup: Markup {
+                    color,
+                    font,
+                    kerning: 1.0,
+                    vert_space: 1.0,
+                    wave: None,
+                },
+            }],
+            pos,
+            offset: vec2(0.0, font.height()),
+            background: None,
         }
     }
 
@@ -125,14 +157,16 @@ impl Billboard {
     pub fn draw(&self) {
         use macroquad::prelude::*;
 
-        draw::patch9(
-            self.tile_size,
-            self.pos.x,
-            self.pos.y,
-            self.width,
-            self.height,
-            self.patch9,
-        );
+        if let Some(bg) = &self.background {
+            draw::patch9(
+                bg.tile_size,
+                self.pos.x,
+                self.pos.y,
+                bg.width,
+                bg.height,
+                bg.patch9,
+            );
+        }
 
         for entry in self.draw_iter() {
             draw_texture_ex(
@@ -350,6 +384,17 @@ impl Billboard {
                 }
             })
             .collect())
+    }
+}
+
+impl BillboardBackground {
+    pub fn new(patch9: Texture2D, tile_size: f32, width: usize, height: usize) -> Self {
+        Self {
+            patch9,
+            tile_size,
+            width,
+            height,
+        }
     }
 }
 

@@ -14,6 +14,7 @@ use std::collections::HashMap;
 #[derive(Enum, Copy, Clone)]
 pub enum Control {
     Click,
+    Pause,
 }
 
 /// Combo keycode and mouse button code
@@ -46,7 +47,7 @@ impl InputSubscriber {
 
         // Put your controls here
         controls.insert(InputCode::Mouse(MouseButton::Left), Control::Click);
-        controls.insert(InputCode::Key(KeyCode::Enter), Control::Click);
+        controls.insert(InputCode::Key(KeyCode::Escape), Control::Pause);
 
         controls
     }
