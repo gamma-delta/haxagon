@@ -20,7 +20,9 @@ use crate::{
     utils::draw::width_height_deficit,
 };
 
+use ::rand::Rng;
 use macroquad::prelude::*;
+use macroquad::rand::compat::QuadRand;
 
 const WIDTH: f32 = 160.0;
 const HEIGHT: f32 = 144.0;
@@ -28,6 +30,9 @@ const ASPECT_RATIO: f32 = WIDTH / HEIGHT;
 
 const UPDATES_PER_DRAW: u64 = 1;
 const UPDATE_DT: f32 = 1.0 / (30.0 * UPDATES_PER_DRAW as f32);
+
+/// Number of frames we seed the RNG for.
+const RANDOM_ENTROPY_TIME: u64 = 300;
 
 /// The `macroquad::main` macro uses this.
 fn window_conf() -> Conf {
@@ -47,7 +52,7 @@ fn window_conf() -> Conf {
 #[macroquad::main(window_conf)]
 async fn main() {
     let loading = Texture2D::from_file_with_format(
-        include_bytes!("../assets/textures/title/loading.png"),
+        include_bytes!("../assets/textures/splash/loading.png"),
         None,
     );
     loading.set_filter(FilterMode::Nearest);
@@ -128,9 +133,11 @@ async fn gameloop() {
         frames_ran: 0,
     };
     loop {
-        if frame_info.frames_ran <= 300 {
+        if frame_info.frames_ran <= RANDOM_ENTROPY_TIME {
             let (mx, my) = mouse_position();
-            macroquad::rand::srand(mx.to_bits() as u64 + ((my.to_bits() as u64) << 32));
+            macroquad::rand::srand(
+                (mx.to_bits() as u64 + ((my.to_bits() as u64) << 32)) ^ QuadRand.gen::<u64>(),
+            );
         }
 
         frame_info.dt = macroquad::time::get_frame_time();
@@ -200,15 +207,12 @@ async fn gameloop() {
         dt: UPDATE_DT,
         frames_ran: 0,
     };
-    let mut mouse_entropy = 0.0f64;
     loop {
-        if frame_info.frames_ran <= 300 {
+        if frame_info.frames_ran <= RANDOM_ENTROPY_TIME {
             let (mx, my) = mouse_position();
-            // 7919 is the last prime on wikipedia's list of prime numbers
-            mouse_entropy = mouse_entropy.tan() + mx as f64 + my as f64 * 7919.0;
-            if frame_info.frames_ran == 60 {
-                macroquad::rand::srand(mouse_entropy.to_bits());
-            }
+            macroquad::rand::srand(
+                (mx.to_bits() as u64 + ((my.to_bits() as u64) << 32)) ^ QuadRand.gen::<u64>(),
+            );
         }
 
         frame_info.dt = UPDATE_DT;

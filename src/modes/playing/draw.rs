@@ -13,7 +13,9 @@ use crate::{
     HEIGHT, WIDTH,
 };
 
-use super::{BOARD_CENTER_X, BOARD_CENTER_Y, MARBLE_SIZE, MARBLE_SPAN_X, MARBLE_SPAN_Y};
+use super::{
+    PlaySettings, BOARD_CENTER_X, BOARD_CENTER_Y, MARBLE_SIZE, MARBLE_SPAN_X, MARBLE_SPAN_Y,
+};
 
 /// Speed for one on or off of the blink
 const CLEAR_ALL_BLINK_SPEED: u32 = 10;
@@ -38,17 +40,23 @@ pub struct Drawer {
     pub score: u32,
 
     pub paused: bool,
+
+    pub settings: PlaySettings,
 }
 
 impl GamemodeDrawer for Drawer {
     fn draw(&self, assets: &Assets, frame_info: FrameInfo) {
-        for hex_idx in (0..BG_HEX_COUNT).rev() {
-            let radius = (hex_idx as f32 + (self.bg_funni_timer / BG_HEX_SPEED as f32).fract())
-                * WIDTH
-                / BG_HEX_COUNT as f32
-                * 1.1;
-            let color =
-                if (self.bg_funni_timer.trunc() as u32 / BG_HEX_SPEED + hex_idx) % BG_HEX_COUNT % 2
+        clear_background(hexcolor(0x14182e_ff));
+
+        if self.settings.funni_background {
+            for hex_idx in (0..BG_HEX_COUNT).rev() {
+                let radius = (hex_idx as f32 + (self.bg_funni_timer / BG_HEX_SPEED as f32).fract())
+                    * WIDTH
+                    / BG_HEX_COUNT as f32
+                    * 1.1;
+                let color = if (self.bg_funni_timer.trunc() as u32 / BG_HEX_SPEED + hex_idx)
+                    % BG_HEX_COUNT
+                    % 2
                     == 0
                 {
                     hexcolor(0x14182e_ff)
@@ -56,15 +64,16 @@ impl GamemodeDrawer for Drawer {
                     hexcolor(0x4b1d52_ff)
                 };
 
-            draw_hexagon(
-                BOARD_CENTER_X,
-                BOARD_CENTER_Y,
-                radius,
-                2.0,
-                false,
-                hexcolor(0xcc2f7b_ff),
-                color,
-            );
+                draw_hexagon(
+                    BOARD_CENTER_X,
+                    BOARD_CENTER_Y,
+                    radius,
+                    2.0,
+                    false,
+                    hexcolor(0xcc2f7b_ff),
+                    color,
+                );
+            }
         }
 
         for bg_pos in Coordinate::new(0, 0).range_iter(self.radius as _) {

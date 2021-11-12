@@ -1,9 +1,11 @@
 use std::collections::VecDeque;
 
 use ahash::{AHashMap, AHashSet};
+use enum_map::Enum;
 use hex2d::{Angle, Coordinate, Direction, Spin};
 use quad_rand::compat::QuadRand;
 use rand::Rng;
+use serde::{Deserialize, Serialize};
 
 /// Board full of marbles to play on
 #[derive(Debug)]
@@ -384,7 +386,7 @@ impl Marble {
     /// Make a random marble.
     pub fn random(max: usize) -> Self {
         use Marble::*;
-        match QuadRand.gen_range(0..max) {
+        match QuadRand.gen_range(0..max.min(Marble::Pink as usize)) {
             0 => Red,
             1 => Green,
             2 => Blue,
@@ -457,6 +459,10 @@ pub struct BoardSettings {
     pub spawn_multiplier: f32,
     /// How many colors of marbles try to spawn
     pub marble_color_count: usize,
+
+    /// A key associated with this gamemode for storing scores, or None
+    /// if it's a custom mode.
+    pub mode_key: Option<BoardSettingsModeKey>,
 }
 
 impl BoardSettings {
@@ -468,6 +474,7 @@ impl BoardSettings {
             gravity: true,
             clear_blob_size: 4,
             marble_color_count: 6,
+            mode_key: Some(BoardSettingsModeKey::Classic),
         }
     }
 
@@ -479,6 +486,7 @@ impl BoardSettings {
             gravity: true,
             clear_blob_size: 4,
             marble_color_count: 7,
+            mode_key: Some(BoardSettingsModeKey::Advanced),
         }
     }
 
@@ -490,6 +498,15 @@ impl BoardSettings {
             gravity: false,
             clear_blob_size: 4,
             marble_color_count: 4,
+            mode_key: Some(BoardSettingsModeKey::NoGravity),
         }
     }
+}
+
+#[non_exhaustive]
+#[derive(Enum, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum BoardSettingsModeKey {
+    Classic,
+    Advanced,
+    NoGravity,
 }

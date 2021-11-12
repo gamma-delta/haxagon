@@ -31,8 +31,8 @@ pub struct Textures {
     pub title_banner: Texture2D,
     pub billboard_patch9: Texture2D,
 
-    pub splash_logo: Texture2D,
-    pub splash_stencil: Texture2D,
+    pub title_logo: Texture2D,
+    pub title_stencil: Texture2D,
     pub marble_atlas: Texture2D,
 }
 
@@ -40,10 +40,10 @@ impl Textures {
     async fn init() -> Self {
         Self {
             fonts: Fonts::init().await,
-            title_banner: texture("title/banner").await,
+            title_banner: texture("splash/banner").await,
             billboard_patch9: texture("ui/billboard_patch9").await,
-            splash_logo: texture("splash").await,
-            splash_stencil: texture("splash_stencil").await,
+            title_logo: texture("splash").await,
+            title_stencil: texture("splash_stencil").await,
             marble_atlas: texture("marbles").await,
         }
     }
@@ -64,8 +64,9 @@ impl Fonts {
 }
 
 pub struct Sounds {
-    pub title_jingle: Sound,
-    pub music1: Sound,
+    pub splash_jingle: Sound,
+    pub title_music: Sound,
+    pub haxagon: Sound,
     pub end_jingle: Sound,
 
     pub select: Sound,
@@ -79,8 +80,9 @@ pub struct Sounds {
 impl Sounds {
     async fn init() -> Self {
         Self {
-            title_jingle: sound("title/jingle").await,
-            music1: sound("haxagon").await,
+            splash_jingle: sound("splash/jingle").await,
+            title_music: sound("title").await,
+            haxagon: sound("haxagon").await,
             end_jingle: sound("ending").await,
 
             select: sound("select").await,

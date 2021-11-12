@@ -3,6 +3,7 @@ use std::f32::consts::TAU;
 use ::rand::Rng;
 use cogs_gamedev::controls::InputHandler;
 use hex2d::{Angle, Direction};
+use macroquad::audio::{play_sound, stop_sound, PlaySoundParams};
 use macroquad::rand::compat::QuadRand;
 use macroquad::{audio::play_sound_once, miniquad as mq, prelude::*};
 
@@ -19,6 +20,7 @@ use crate::{
     HEIGHT, WIDTH,
 };
 
+use super::playing::PlaySettings;
 use super::ModePlaying;
 
 /// How often new hexagons spawn
@@ -30,9 +32,12 @@ pub struct ModeSplash {
     b_classic: Button,
     b_advanced: Button,
     b_static: Button,
+    b_toggle_background: Button,
 
     hex_timer: u32,
     hexagons: Vec<(Vec2, u32)>,
+
+    settings: PlaySettings,
 
     marble_timer: u32,
     marble: Marble,
@@ -76,6 +81,12 @@ impl Gamemode for ModeSplash {
             .retain(|(_, time)| hex_radius(*time) < WIDTH * 2.0);
 
         if controls.clicked_down(Control::Click) {
+            let mut fwshh = false;
+            if self.b_toggle_background.mouse_hovering() {
+                self.settings.funni_background = !self.settings.funni_background;
+                fwshh = true;
+            }
+
             let next_settings = if self.b_classic.mouse_hovering() {
                 Some(BoardSettings::classic())
             } else if self.b_advanced.mouse_hovering() {
@@ -85,9 +96,15 @@ impl Gamemode for ModeSplash {
             } else {
                 None
             };
-            if let Some(settings) = next_settings {
+            fwshh |= next_settings.is_some();
+
+            if fwshh {
                 play_sound_once(assets.sounds.shunt);
-                return Transition::Push(Box::new(ModePlaying::new(settings)));
+            }
+
+            if let Some(settings) = next_settings {
+                stop_sound(assets.sounds.title_music);
+                return Transition::Push(Box::new(ModePlaying::new(settings, self.settings)));
             }
         }
 
@@ -96,6 +113,7 @@ impl Gamemode for ModeSplash {
             &mut self.b_classic,
             &mut self.b_advanced,
             &mut self.b_static,
+            &mut self.b_toggle_background,
         ] {
             if button.mouse_entered() || button.mouse_left() {
                 select_sound = true;
@@ -113,9 +131,16 @@ impl Gamemode for ModeSplash {
         Box::new(self.clone())
     }
 
-    fn on_resume(&mut self, assets: &Assets) {
+    fn on_reveal(&mut self, assets: &Assets) {
         self.hexagons.clear();
         self.hex_timer = HEX_TIMER;
+        play_sound(
+            assets.sounds.title_music,
+            PlaySoundParams {
+                looped: true,
+                volume: 0.5,
+            },
+        )
     }
 }
 
@@ -135,9 +160,9 @@ impl GamemodeDrawer for ModeSplash {
             );
         }
 
-        let logo_x = WIDTH / 2.0 - assets.textures.splash_logo.width() / 2.0;
+        let logo_x = WIDTH / 2.0 - assets.textures.title_logo.width() / 2.0;
         let logo_y = HEIGHT * 0.2;
-        draw_texture(assets.textures.splash_logo, logo_x, logo_y, WHITE);
+        draw_texture(assets.textures.title_logo, logo_x, logo_y, WHITE);
 
         /*
         // Fill in the stencil
@@ -189,11 +214,17 @@ impl GamemodeDrawer for ModeSplash {
         let highlight = hexcolor(0x692464_ff);
         let border = hexcolor(0xcc2f7b_ff);
         let blight = hexcolor(0xff5277_ff);
+        let bg_text = if self.settings.funni_background {
+            "BACKGROUND ON"
+        } else {
+            "BACKGROUND OFF"
+        };
 
         for (button, text) in [
             (&self.b_classic, "CLASSIC"),
             (&self.b_advanced, "ADVANCED"),
             (&self.b_static, "STATIC"),
+            (&self.b_toggle_background, bg_text),
         ] {
             button.draw(color, border, highlight, blight, 1.1);
 
@@ -222,12 +253,18 @@ impl ModeSplash {
         let h = 9.0;
         let y = HEIGHT * 0.5;
 
+        let wide_w = 4.0 * 16.0;
+        let wide_x = WIDTH / 2.0 - wide_w / 2.0;
+
         let (in_dir, out_dir) = new_directions();
 
         Self {
             b_classic: Button::new(x, y - h - 2.0, w, h),
             b_advanced: Button::new(x, y, w, h),
             b_static: Button::new(x, y + h + 2.0, w, h),
+            b_toggle_background: Button::new(wide_x, y + (h + 2.0) * 2.5, wide_w, h),
+
+            settings: PlaySettings::default(),
 
             hex_timer: 0,
             hexagons: Vec::new(),

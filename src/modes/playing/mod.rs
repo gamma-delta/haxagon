@@ -39,6 +39,8 @@ pub struct ModePlaying {
 
     pub played_music: bool,
     pub paused: bool,
+
+    pub settings: PlaySettings,
 }
 
 impl Gamemode for ModePlaying {
@@ -51,7 +53,7 @@ impl Gamemode for ModePlaying {
         if !self.played_music {
             self.played_music = true;
             play_sound(
-                assets.sounds.music1,
+                assets.sounds.haxagon,
                 PlaySoundParams {
                     looped: true,
                     volume: 0.5,
@@ -100,18 +102,20 @@ impl Gamemode for ModePlaying {
             bg_funni_timer: self.bg_funni_timer,
             score: self.board.score(),
             paused: self.paused,
+            settings: self.settings.clone(),
         })
     }
 }
 
 impl ModePlaying {
-    pub fn new(settings: BoardSettings) -> Self {
+    pub fn new(board_settings: BoardSettings, play_settings: PlaySettings) -> Self {
         Self {
-            board: Board::new(settings),
+            board: Board::new(board_settings),
             pattern: None,
             bg_funni_timer: 0.0,
             played_music: false,
             paused: false,
+            settings: play_settings,
         }
     }
 
@@ -201,7 +205,7 @@ impl ModePlaying {
 
         let failure = self.board.tick();
         if failure {
-            stop_sound(assets.sounds.music1);
+            stop_sound(assets.sounds.haxagon);
             return Transition::Swap(Box::new(ModeLosingTransition::new(self)));
         }
 
@@ -364,4 +368,17 @@ enum PatternExtensionValidity {
     Invalid,
     /// We finished
     Closing,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct PlaySettings {
+    pub funni_background: bool,
+}
+
+impl Default for PlaySettings {
+    fn default() -> Self {
+        Self {
+            funni_background: true,
+        }
+    }
 }

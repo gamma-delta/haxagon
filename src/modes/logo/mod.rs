@@ -88,13 +88,13 @@ impl Gamemode for ModeLogo {
         if self.first_frame {
             self.first_frame = false;
             self.start_time = macroquad::time::get_time();
-            macroquad::audio::play_sound_once(assets.sounds.title_jingle);
+            macroquad::audio::play_sound_once(assets.sounds.splash_jingle);
         }
 
         if macroquad::time::get_time() - self.start_time > 5.0
             || controls.clicked_down(Control::Click)
         {
-            macroquad::audio::stop_sound(assets.sounds.title_jingle);
+            macroquad::audio::stop_sound(assets.sounds.splash_jingle);
 
             // Put your next state here!
             Transition::Swap(Box::new(ModeSplash::new()))

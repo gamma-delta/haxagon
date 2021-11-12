@@ -15,12 +15,13 @@ use crate::{
     utils::{
         button::Button,
         draw::{self, hexcolor},
+        profile::Profile,
         text::{draw_pixel_text, TextAlign},
     },
     HEIGHT, WIDTH,
 };
 
-use super::ModePlaying;
+use super::{ModePlaying, PlaySettings};
 
 /// Transition between having just lost the game and the losing screen
 #[derive(Clone)]
@@ -30,7 +31,11 @@ pub struct ModeLosingTransition {
     time: u32,
     /// Score to pass on to the next stage
     score: u32,
-    settings: BoardSettings,
+    /// if there was a previous score it's here
+    prev_score: Option<u32>,
+
+    board_settings: BoardSettings,
+    play_settings: PlaySettings,
 }
 
 impl Gamemode for ModeLosingTransition {
@@ -117,13 +122,37 @@ impl GamemodeDrawer for ModeLosingTransition {
 }
 
 impl ModeLosingTransition {
+    /// also saves the score
     pub fn new(prev: &ModePlaying) -> Self {
+        let board_settings = prev.board.settings().clone();
+
+        let mut profile = Profile::get();
+
+        let prev_score = if let Some(mk) = board_settings.mode_key {
+            match profile.highscores.get_mut(&mk) {
+                Some(prev_score) => {
+                    // save it so we can return it
+                    let save = *prev_score;
+                    *prev_score = save.max(prev.board.score());
+                    Some(save)
+                }
+                None => {
+                    profile.highscores.insert(mk, prev.board.score());
+                    None
+                }
+            }
+        } else {
+            None
+        };
+
         Self {
             marbles: prev.board.get_marbles().clone(),
             radius: prev.board.radius(),
             time: 0,
             score: prev.board.score(),
-            settings: prev.board.settings().clone(),
+            prev_score,
+            board_settings,
+            play_settings: prev.settings,
         }
     }
 
@@ -151,8 +180,10 @@ pub struct ModeLosingScreen {
     time: u32,
 
     score: u32,
+    prev_score: Option<u32>,
     /// Settings so we can play again with the same settings if you want
-    settings: BoardSettings,
+    board_settings: BoardSettings,
+    play_settings: PlaySettings,
 
     b_again: Button,
     b_quit: Button,
@@ -169,7 +200,10 @@ impl Gamemode for ModeLosingScreen {
 
         if self.b_again.mouse_hovering() && controls.clicked_down(Control::Click) {
             play_sound_once(assets.sounds.shunt);
-            return Transition::Swap(Box::new(ModePlaying::new(self.settings.clone())));
+            return Transition::Swap(Box::new(ModePlaying::new(
+                self.board_settings.clone(),
+                self.play_settings.clone(),
+            )));
         } else if self.b_quit.mouse_hovering() && controls.clicked_down(Control::Click)
             || controls.clicked_down(Control::Pause)
         {
@@ -205,8 +239,18 @@ impl GamemodeDrawer for ModeLosingScreen {
         let border = hexcolor(0xcc2f7b_ff);
         let blight = hexcolor(0xff5277_ff);
 
+        let text = match self.prev_score {
+            Some(prev) if prev < self.score => format!(
+                "GAME OVER\nSCORE: {}\nNEW BEST! PREVIOUS: {}",
+                self.score * 100,
+                prev * 100
+            ),
+            Some(_) => format!("GAME OVER\nSCORE: {}", self.score * 100),
+            None => format!("GAME OVER\nSCORE: {}\n NEW BEST!", self.score * 100),
+        };
+
         draw_pixel_text(
-            &format!("GAME OVER\nSCORE: {}", self.score * 100),
+            &text,
             WIDTH / 2.0,
             HEIGHT * 0.25,
             TextAlign::Center,
@@ -255,7 +299,9 @@ impl ModeLosingScreen {
         let x = WIDTH / 2.0 - w / 2.0;
         Self {
             score: prev.score,
-            settings: prev.settings.clone(),
+            prev_score: prev.prev_score,
+            board_settings: prev.board_settings.clone(),
+            play_settings: prev.play_settings.clone(),
             time: 0,
             b_again: Button::new(x, HEIGHT / 2.0 + 3.0, w, 9.0),
             b_quit: Button::new(x, HEIGHT / 2.0 + 14.0, w, 9.0),

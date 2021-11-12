@@ -15,9 +15,9 @@ pub trait Gamemode {
     /// Gather information about how to draw this state.
     fn get_draw_info(&mut self) -> Box<dyn GamemodeDrawer>;
 
-    /// When a `Transition` finishes and things are popped off to reveal this gamemode,
-    /// this function is called.
-    fn on_resume(&mut self, assets: &Assets) {}
+    /// Called when the state newly comes on top of the stack,
+    /// either from being pushed there or revealed after a pop.
+    fn on_reveal(&mut self, assets: &Assets) {}
 }
 
 /// Data on how to draw a state
@@ -63,6 +63,7 @@ impl Transition {
                     stack.pop();
                 }
                 stack.push(new);
+                stack.last_mut().unwrap().on_reveal(assets);
             }
             Transition::Push(new) => {
                 stack.push(new);
@@ -72,7 +73,7 @@ impl Transition {
                 // this would be very bad otherwise
                 if stack.len() >= 2 {
                     stack.pop();
-                    stack.last_mut().unwrap().on_resume(&assets)
+                    stack.last_mut().unwrap().on_reveal(assets);
                 }
             }
             Transition::PopNAndPush(count, mut news) => {
@@ -82,7 +83,7 @@ impl Transition {
 
                 if news.is_empty() {
                     // we only popped, so the last is revealed!
-                    stack.last_mut().unwrap().on_resume(assets);
+                    stack.last_mut().unwrap().on_reveal(assets);
                 } else {
                     stack.append(&mut news);
                 }
