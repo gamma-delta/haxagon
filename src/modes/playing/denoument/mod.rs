@@ -245,7 +245,11 @@ impl GamemodeDrawer for ModeLosingScreen {
                 self.score * 100,
                 prev * 100
             ),
-            Some(_) => format!("GAME OVER\nSCORE: {}", self.score * 100),
+            Some(prev) => format!(
+                "GAME OVER\nSCORE: {}\nPREVIOUS: {}",
+                self.score * 100,
+                prev * 100
+            ),
             None => format!("GAME OVER\nSCORE: {}\n NEW BEST!", self.score * 100),
         };
 
