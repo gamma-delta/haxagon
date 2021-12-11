@@ -1,7 +1,7 @@
 mod logo;
 mod playing;
-mod splash;
+mod title;
 
-pub use logo::ModeLogo;
+pub use logo::ModeSplash;
 pub use playing::ModePlaying;
-pub use splash::ModeSplash;
+pub use title::ModeTitle;

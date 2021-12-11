@@ -23,12 +23,15 @@ use crate::{
 use super::playing::PlaySettings;
 use super::ModePlaying;
 
-/// How often new hexagons spawn
-const HEX_TIMER: u32 = 50;
+/// How often new hexagons spawn.
+// Title screen music is in 12/8, 8th = 200bpm. we want a pulse every 3 beats.
+// (60 frames / 1 second) * (60 seconds / 1 minute) * (1 minute / 200 beats) * (3 beats / 1 hex)
+// Then to combat lag make it a *little* faster
+const HEX_TIMER: u32 = (60.0f32 * 60.0 / 200.0 * 3.0) as u32 - 1;
 const MARBLE_TIMER: u32 = 60;
 
 #[derive(Clone)]
-pub struct ModeSplash {
+pub struct ModeTitle {
     b_classic: Button,
     b_advanced: Button,
     b_static: Button,
@@ -45,7 +48,7 @@ pub struct ModeSplash {
     out_dir: Direction,
 }
 
-impl Gamemode for ModeSplash {
+impl Gamemode for ModeTitle {
     fn update(
         &mut self,
         controls: &InputSubscriber,
@@ -144,7 +147,7 @@ impl Gamemode for ModeSplash {
     }
 }
 
-impl GamemodeDrawer for ModeSplash {
+impl GamemodeDrawer for ModeTitle {
     fn draw(&self, assets: &Assets, frame_info: FrameInfo) {
         clear_background(hexcolor(0x14182e_ff));
 
@@ -245,7 +248,7 @@ impl GamemodeDrawer for ModeSplash {
     }
 }
 
-impl ModeSplash {
+impl ModeTitle {
     pub fn new() -> Self {
         let w = 4.0 * 12.0;
         let x = WIDTH / 2.0 - w / 2.0;

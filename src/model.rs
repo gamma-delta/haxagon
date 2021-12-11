@@ -19,8 +19,6 @@ pub struct Board {
 
     /// Count up until we spawn the next marble
     next_spawn_timer: u32,
-    /// Position previously spawned  at, which walks around the board.
-    spawn_pos: Coordinate,
     planned_next_spawn_pos: Option<Coordinate>,
 
     tick_count: u32,
@@ -40,10 +38,8 @@ impl Board {
             action_timer: 0,
             next_spawn_timer: 0,
 
-            // Gotta offset it by 1 so it displays right
-            spawn_pos: Coordinate::new(pad as i32, -1),
             // we're about to set this in
-            planned_next_spawn_pos: None,
+            planned_next_spawn_pos: Some(Coordinate::new(pad as i32, 0)),
             tick_count: 0,
             settings,
         };
@@ -53,7 +49,6 @@ impl Board {
                 out.spawn_marble(&c);
             }
         }
-        out.planned_next_spawn_pos = out.find_next_spawnpoint();
 
         out
     }
@@ -68,8 +63,7 @@ impl Board {
                 self.spawn_marble(&sp);
                 self.gravitate();
                 self.action_queue.push_back(BoardAction::ClearBlobs(1));
-                self.spawn_pos = sp;
-                self.planned_next_spawn_pos = self.find_next_spawnpoint();
+                self.planned_next_spawn_pos = self.find_next_spawnpoint(sp);
             } else {
                 // oh no we couldn't find a place to be
                 return true;
@@ -77,12 +71,12 @@ impl Board {
         }
 
         let do_action = loop {
-            break match self.action_queue.front() {
+            let do_action = match self.action_queue.front() {
                 Some(it) => {
                     if let BoardAction::ClearBlobs(_) = it {
                         let blobs = self.find_blobs();
                         if blobs.is_empty() {
-                            // Skip doing this if it's nonexistent
+                            // Skip clearing blobs if we didn't find any blobs.
                             self.action_queue.pop_front();
                             continue;
                         }
@@ -93,13 +87,19 @@ impl Board {
                 }
                 _ => false,
             };
+            break do_action;
         };
         if do_action {
             let action = self.action_queue.pop_front().unwrap();
             self.execute_action(action);
             self.action_timer = 0;
             self.gravitate();
-            self.planned_next_spawn_pos = self.find_next_spawnpoint();
+
+            // This action likely moved some marbles, so let's reposition the spawnpoint
+            if let Some(next_sp) = self.planned_next_spawn_pos {
+                let shunted = self.gravity_all(next_sp);
+                self.planned_next_spawn_pos = Some(shunted);
+            }
         }
 
         self.tick_count += 1;
@@ -185,14 +185,14 @@ impl Board {
         !self.is_in_bounds(c) || self.get_marble(c).is_some()
     }
 
-    /// Find the next spawnpos based on the previous one
-    fn find_next_spawnpoint(&self) -> Option<Coordinate> {
+    /// If the previous spawnpoint was here, wehere is the next spawnpoint?
+    fn find_next_spawnpoint(&self, prev: Coordinate) -> Option<Coordinate> {
         // clockwise iter
         let maybe_pos = (|| {
             for dir in Direction::all() {
                 // Use a maze algorithm: always keep your left hand on the wall.
-                let ahead = self.spawn_pos + *dir;
-                let wallfinder = self.spawn_pos + (*dir + Angle::Left);
+                let ahead = prev + *dir;
+                let wallfinder = prev + (*dir + Angle::Left);
 
                 if !self.is_solid(&ahead) && self.is_solid(&wallfinder) {
                     // here's our pos! but let's gravitate it to avoid jank
@@ -208,17 +208,11 @@ impl Board {
                 Coordinate::new(0, 0)
                     .range_iter(self.radius() as i32)
                     .filter(|pos| self.get_marble(pos).is_none())
-                    .min_by_key(|pos| pos.distance(self.spawn_pos))
+                    .min_by_key(|pos| pos.distance(prev))
             }
         };
-        if let Some(mut pos) = maybe_pos {
-            while let Some(next) = self.gravity_step(&pos) {
-                pos = next;
-            }
-            Some(pos)
-        } else {
-            None
-        }
+        // Shunt the spawnpoint to the outside, even if there's no gravity.
+        maybe_pos.map(|pos| self.gravity_all(pos))
     }
 
     fn timer_max(&self) -> u32 {
@@ -283,7 +277,6 @@ impl Board {
                 let poses = self.marbles.keys().cloned().collect::<Vec<_>>();
                 for pos in poses {
                     let target = self.gravity_step(&pos);
-                    // If there's enough solidity around DON'T FALL
                     if let Some(target) = target {
                         let m = self.marbles.remove(&pos).unwrap();
                         self.marbles.insert(target, m);
@@ -309,21 +302,30 @@ impl Board {
 
             let target = *c + dir;
             if self.is_in_bounds(&target) && !self.marbles.contains_key(&target) {
-                let target = *c + dir;
-                if self.marbles.contains_key(c) && !self.marbles.contains_key(&target) {
+                // shunt the marble here!
+                if shunt.is_none() {
                     shunt = Some(target);
-                    break;
                 }
+                // but keep going to record solid positions.
             } else {
                 solid_poses += 1;
             }
         }
 
+        // If there's enough solidity around DON'T FALL
         if solid_poses < 2 {
             shunt
         } else {
             None
         }
+    }
+
+    /// Repeatedly apply gravity to this point and return where it moves to.
+    fn gravity_all(&self, mut c: Coordinate) -> Coordinate {
+        while let Some(newpos) = self.gravity_step(&c) {
+            c = newpos
+        }
+        c
     }
 
     /// Get all coordinates connected by color to the given coordinate (ignoring None)

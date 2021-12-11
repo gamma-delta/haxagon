@@ -102,7 +102,7 @@ impl Gamemode for ModePlaying {
             bg_funni_timer: self.bg_funni_timer,
             score: self.board.score(),
             paused: self.paused,
-            settings: self.settings.clone(),
+            settings: self.settings,
         })
     }
 }

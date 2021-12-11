@@ -16,7 +16,7 @@ use crate::{
     assets::Assets,
     boilerplates::{FrameInfo, Gamemode},
     controls::InputSubscriber,
-    modes::ModeLogo,
+    modes::ModeSplash,
     utils::draw::width_height_deficit,
 };
 
@@ -97,7 +97,7 @@ async fn gameloop() {
     // Drawing must happen on the main thread (thanks macroquad...)
     // so updating goes over here
     let _update_handle = thread::spawn(move || {
-        let mut mode_stack: Vec<Box<dyn Gamemode>> = vec![Box::new(ModeLogo::new())];
+        let mut mode_stack: Vec<Box<dyn Gamemode>> = vec![Box::new(ModeSplash::new())];
         let mut frame_info = FrameInfo {
             dt: UPDATE_DT,
             frames_ran: 0,
@@ -198,7 +198,7 @@ async fn gameloop() {
     let assets = Box::leak(Box::new(assets)) as &'static Assets;
 
     let mut controls = InputSubscriber::new();
-    let mut mode_stack: Vec<Box<dyn Gamemode>> = vec![Box::new(ModeLogo::new())];
+    let mut mode_stack: Vec<Box<dyn Gamemode>> = vec![Box::new(ModeSplash::new())];
 
     let canvas = render_target(WIDTH as u32, HEIGHT as u32);
     canvas.texture.set_filter(FilterMode::Nearest);

@@ -83,10 +83,10 @@ impl GamemodeDrawer for Drawer {
             let corner_x = ox as f32 - MARBLE_SIZE / 2.0 + BOARD_CENTER_X;
             let corner_y = oy as f32 - MARBLE_SIZE / 2.0 + BOARD_CENTER_Y;
 
-            let color = if Some(bg_pos) == self.next_spawn_point {
-                hexcolor(0xff4538_ff)
+            let (sx, color) = if self.next_spawn_point == Some(bg_pos) {
+                (1, hexcolor(0xff4538_a0))
             } else {
-                hexcolor(0xdfe0e8_a0)
+                (0, hexcolor(0xdfe0e8_a0))
             };
 
             draw_texture_ex(
@@ -95,7 +95,12 @@ impl GamemodeDrawer for Drawer {
                 corner_y,
                 color,
                 DrawTextureParams {
-                    source: Some(Rect::new(0.0, 16.0, MARBLE_SIZE, MARBLE_SIZE)),
+                    source: Some(Rect::new(
+                        sx as f32 * MARBLE_SIZE,
+                        2.0 * MARBLE_SIZE,
+                        MARBLE_SIZE,
+                        MARBLE_SIZE,
+                    )),
                     ..Default::default()
                 },
             );

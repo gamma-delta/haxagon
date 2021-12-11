@@ -2,7 +2,7 @@ use crate::{
     assets::Assets,
     boilerplates::{FrameInfo, Gamemode, GamemodeDrawer, Transition},
     controls::{Control, InputSubscriber},
-    modes::ModeSplash,
+    modes::ModeTitle,
     utils::draw::{self, hexcolor},
     HEIGHT, WIDTH,
 };
@@ -18,7 +18,7 @@ const BANNER_DISPLAY_SIZE: f32 = 128.0;
 const BANNER_START_TIME: f64 = 0.25;
 
 #[derive(Clone)]
-pub struct ModeLogo {
+pub struct ModeSplash {
     start_time: f64,
     first_frame: bool,
 
@@ -28,7 +28,7 @@ pub struct ModeLogo {
     blade_light: Color,
 }
 
-impl ModeLogo {
+impl ModeSplash {
     // shut up clippy
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
@@ -78,7 +78,7 @@ impl ModeLogo {
     }
 }
 
-impl Gamemode for ModeLogo {
+impl Gamemode for ModeSplash {
     fn update(
         &mut self,
         controls: &InputSubscriber,
@@ -97,7 +97,7 @@ impl Gamemode for ModeLogo {
             macroquad::audio::stop_sound(assets.sounds.splash_jingle);
 
             // Put your next state here!
-            Transition::Swap(Box::new(ModeSplash::new()))
+            Transition::Swap(Box::new(ModeTitle::new()))
         } else {
             Transition::None
         }
@@ -109,7 +109,7 @@ impl Gamemode for ModeLogo {
     }
 }
 
-impl GamemodeDrawer for ModeLogo {
+impl GamemodeDrawer for ModeSplash {
     fn draw(&self, assets: &Assets, _frame_info: FrameInfo) {
         use macroquad::prelude::*;
 
