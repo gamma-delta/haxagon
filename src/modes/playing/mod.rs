@@ -3,9 +3,11 @@ use cogs_gamedev::{controls::InputHandler, grids::Coord};
 use hex2d::{Angle, Coordinate, Spacing};
 use itertools::Itertools;
 use macroquad::{
-    audio::{play_sound, stop_sound, PlaySoundParams},
+    audio::{play_sound, stop_sound, PlaySoundParams, Sound},
     prelude::{mouse_position, vec2, Mat2},
 };
+use quad_rand::compat::QuadRand;
+use rand::Rng;
 
 use crate::{
     assets::Assets,
@@ -37,7 +39,10 @@ pub struct ModePlaying {
 
     pub bg_funni_timer: f32,
 
+    /// Did we start the music yet?
     pub played_music: bool,
+    pub music: Sound,
+
     pub paused: bool,
 
     pub settings: PlaySettings,
@@ -53,7 +58,7 @@ impl Gamemode for ModePlaying {
         if !self.played_music {
             self.played_music = true;
             play_sound(
-                assets.sounds.haxagon,
+                self.music,
                 PlaySoundParams {
                     looped: true,
                     volume: 0.5,
@@ -108,12 +113,19 @@ impl Gamemode for ModePlaying {
 }
 
 impl ModePlaying {
-    pub fn new(board_settings: BoardSettings, play_settings: PlaySettings) -> Self {
+    pub fn new(
+        board_settings: BoardSettings,
+        play_settings: PlaySettings,
+        assets: &Assets,
+    ) -> Self {
+        let tracks = [assets.sounds.music0, assets.sounds.music1];
+        let music = tracks[QuadRand.gen_range(0..tracks.len())];
         Self {
             board: Board::new(board_settings),
             pattern: None,
             bg_funni_timer: 0.0,
             played_music: false,
+            music,
             paused: false,
             settings: play_settings,
         }
@@ -205,7 +217,7 @@ impl ModePlaying {
 
         let failure = self.board.tick();
         if failure {
-            stop_sound(assets.sounds.haxagon);
+            stop_sound(self.music);
             return Transition::Swap(Box::new(ModeLosingTransition::new(self)));
         }
 

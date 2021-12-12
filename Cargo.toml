@@ -1,5 +1,5 @@
 [package]
-name = "omegaquad"
+name = "haxagon"
 version = "0.1.0"
 authors = ["gamma-delta <29877714+gamma-delta@users.noreply.github.com>"]
 edition = "2018"
@@ -7,7 +7,8 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-macroquad = "0.3.4"
+# yay i fixed a bug! so i have to use the master branch
+macroquad = { git = "https://github.com/not-fl3/macroquad.git" }
 cogs-gamedev = "*"
 quad-wasmnastics = "*"
 

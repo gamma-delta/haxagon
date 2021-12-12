@@ -202,7 +202,8 @@ impl Gamemode for ModeLosingScreen {
             play_sound_once(assets.sounds.shunt);
             return Transition::Swap(Box::new(ModePlaying::new(
                 self.board_settings.clone(),
-                self.play_settings.clone(),
+                self.play_settings,
+                assets,
             )));
         } else if self.b_quit.mouse_hovering() && controls.clicked_down(Control::Click)
             || controls.clicked_down(Control::Pause)

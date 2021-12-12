@@ -12,6 +12,8 @@ mod model;
 #[cfg(target_arch = "wasm32")]
 mod wasm_random_impl;
 
+use std::convert::TryInto;
+
 use crate::{
     assets::Assets,
     boilerplates::{FrameInfo, Gamemode},
@@ -21,8 +23,9 @@ use crate::{
 };
 
 use ::rand::Rng;
-use macroquad::prelude::*;
 use macroquad::rand::compat::QuadRand;
+use macroquad::{miniquad::conf::Icon, prelude::*};
+use utils::draw::hexcolor;
 
 const WIDTH: f32 = 160.0;
 const HEIGHT: f32 = 144.0;
@@ -36,15 +39,25 @@ const RANDOM_ENTROPY_TIME: u64 = 300;
 
 /// The `macroquad::main` macro uses this.
 fn window_conf() -> Conf {
+    let small =
+        Image::from_file_with_format(include_bytes!("../assets/textures/icon/16.png"), None);
+    let medium =
+        Image::from_file_with_format(include_bytes!("../assets/textures/icon/32.png"), None);
+    let big = Image::from_file_with_format(include_bytes!("../assets/textures/icon/64.png"), None);
     Conf {
         window_title: if cfg!(debug_assertions) {
             concat!(env!("CARGO_CRATE_NAME"), " v", env!("CARGO_PKG_VERSION"))
         } else {
-            "Omegaquad Game!"
+            "Haxagon"
         }
         .to_owned(),
         fullscreen: false,
         sample_count: 64,
+        icon: Some(Icon {
+            small: small.bytes.try_into().unwrap(),
+            medium: medium.bytes.try_into().unwrap(),
+            big: big.bytes.try_into().unwrap(),
+        }),
         ..Default::default()
     }
 }
@@ -57,39 +70,59 @@ async fn main() {
     );
     loading.set_filter(FilterMode::Nearest);
 
-    let (miss_x, miss_y) = width_height_deficit();
+    let (assets_tx, assets_rx) = std::sync::mpsc::sync_channel(1);
+    let _loading_coroutine = coroutines::start_coroutine(async move {
+        // Yield one frame so that we can draw the loading screen
+        next_frame().await;
+        let assets = Assets::init().await;
+        assets_tx.send(assets).unwrap();
+    });
 
-    let real_width = loading.width() * screen_width() / WIDTH;
-    let real_height = loading.height() * screen_height() / HEIGHT;
+    let assets = loop {
+        let (miss_x, miss_y) = width_height_deficit();
+        // How big do the textures actually display on the screen?
+        let real_width = loading.width() * (screen_width() - miss_x) / WIDTH;
+        let real_height = loading.height() * (screen_height() - miss_y) / HEIGHT;
 
-    clear_background(BLACK);
-    draw_texture_ex(
-        loading,
-        (screen_width() - real_width - (real_width * 0.125) - miss_x).floor(),
-        (screen_height() - real_height - (real_width * 0.125) - miss_y).floor(),
-        WHITE,
-        DrawTextureParams {
-            dest_size: Some(vec2(real_width, real_height)),
-            ..Default::default()
-        },
-    );
-    // Why do we have to have two? Beats me.
-    next_frame().await;
-    next_frame().await;
-
-    gameloop().await;
+        // Simulate the border effect
+        clear_background(BLACK);
+        draw_rectangle(
+            miss_x / 2.0,
+            miss_y / 2.0,
+            screen_width() - miss_x,
+            screen_height() - miss_y,
+            hexcolor(0x21181b_ff),
+        );
+        draw_texture_ex(
+            loading,
+            (screen_width() - miss_x / 2.0 - real_width - screen_width() * 0.05).floor(),
+            // yes, the width
+            (screen_height() - miss_y / 2.0 - real_height - screen_width() * 0.05).floor(),
+            WHITE,
+            DrawTextureParams {
+                dest_size: Some(vec2(real_width, real_height)),
+                ..Default::default()
+            },
+        );
+        match assets_rx.try_recv() {
+            Ok(assets) => break assets,
+            Err(std::sync::mpsc::TryRecvError::Empty) => {}
+            Err(std::sync::mpsc::TryRecvError::Disconnected) => panic!(),
+        }
+        next_frame().await;
+    };
+    let assets = Box::leak(Box::new(assets)) as &'static Assets;
+    gameloop(assets).await;
 }
 
 /// Threaded version of main.
 ///
 /// This updates and draws at the same time.
 #[cfg(not(any(target_arch = "wasm32", not(feature = "thread_loop"))))]
-async fn gameloop() {
+async fn gameloop(assets: &'static Assets) {
     use crossbeam::channel::TryRecvError;
     use std::thread;
 
-    let assets = Assets::init().await;
-    let assets = Box::leak(Box::new(assets)) as &'static Assets;
     let mut controls = InputSubscriber::new();
 
     let (draw_tx, draw_rx) = crossbeam::channel::bounded(0);
@@ -193,10 +226,7 @@ async fn gameloop() {
 
 /// Unthreaded version of main.
 #[cfg(any(target_arch = "wasm32", not(feature = "thread_loop")))]
-async fn gameloop() {
-    let assets = Assets::init().await;
-    let assets = Box::leak(Box::new(assets)) as &'static Assets;
-
+async fn gameloop(assets: &'static Assets) {
     let mut controls = InputSubscriber::new();
     let mut mode_stack: Vec<Box<dyn Gamemode>> = vec![Box::new(ModeSplash::new())];
 

@@ -107,7 +107,11 @@ impl Gamemode for ModeTitle {
 
             if let Some(settings) = next_settings {
                 stop_sound(assets.sounds.title_music);
-                return Transition::Push(Box::new(ModePlaying::new(settings, self.settings)));
+                return Transition::Push(Box::new(ModePlaying::new(
+                    settings,
+                    self.settings,
+                    assets,
+                )));
             }
         }
 
@@ -151,16 +155,18 @@ impl GamemodeDrawer for ModeTitle {
     fn draw(&self, assets: &Assets, frame_info: FrameInfo) {
         clear_background(hexcolor(0x14182e_ff));
 
-        for (pos, time) in self.hexagons.iter() {
-            draw_hexagon(
-                pos.x,
-                pos.y,
-                hex_radius(*time),
-                2.0,
-                false,
-                hexcolor(0x9c2a70_ff),
-                hexcolor(0x14182e_ff),
-            );
+        if self.settings.funni_background {
+            for (pos, time) in self.hexagons.iter() {
+                draw_hexagon(
+                    pos.x,
+                    pos.y,
+                    hex_radius(*time),
+                    2.0,
+                    false,
+                    hexcolor(0x9c2a70_ff),
+                    hexcolor(0x14182e_ff),
+                );
+            }
         }
 
         let logo_x = WIDTH / 2.0 - assets.textures.title_logo.width() / 2.0;

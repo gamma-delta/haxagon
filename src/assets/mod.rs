@@ -65,9 +65,12 @@ impl Fonts {
 
 pub struct Sounds {
     pub splash_jingle: Sound,
+
     pub title_music: Sound,
-    pub haxagon: Sound,
     pub end_jingle: Sound,
+
+    pub music0: Sound,
+    pub music1: Sound,
 
     pub select: Sound,
     pub shunt: Sound,
@@ -81,16 +84,19 @@ impl Sounds {
     async fn init() -> Self {
         Self {
             splash_jingle: sound("splash/jingle").await,
-            title_music: sound("title").await,
-            haxagon: sound("haxagon").await,
-            end_jingle: sound("ending").await,
 
-            select: sound("select").await,
-            shunt: sound("shunt").await,
-            clear1: sound("clear1").await,
-            clear2: sound("clear2").await,
-            clear3: sound("clear3").await,
-            clear_all: sound("clear_all").await,
+            title_music: sound("music/title").await,
+            end_jingle: sound("music/ending").await,
+
+            music0: sound("music/music0").await,
+            music1: sound("music/music1").await,
+
+            select: sound("sfx/select").await,
+            shunt: sound("sfx/shunt").await,
+            clear1: sound("sfx/clear1").await,
+            clear2: sound("sfx/clear2").await,
+            clear3: sound("sfx/clear3").await,
+            clear_all: sound("sfx/clear_all").await,
         }
     }
 }
