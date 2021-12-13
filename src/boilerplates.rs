@@ -1,7 +1,12 @@
+use std::any::Any;
+
 use crate::{assets::Assets, controls::InputSubscriber};
 
+pub type GamemodeBox = Box<dyn Gamemode>;
+pub type DrawerBox = Box<dyn GamemodeDrawer>;
+
 /// Things the engine can update and draw
-pub trait Gamemode {
+pub trait Gamemode: Any {
     /// Update the state.
     ///
     /// Return how to swap to another state if need be.
@@ -13,15 +18,18 @@ pub trait Gamemode {
     ) -> Transition;
 
     /// Gather information about how to draw this state.
-    fn get_draw_info(&mut self) -> Box<dyn GamemodeDrawer>;
+    fn get_draw_info(&mut self) -> DrawerBox;
 
     /// Called when the state newly comes on top of the stack,
     /// either from being pushed there or revealed after a pop.
-    fn on_reveal(&mut self, assets: &Assets) {}
+    ///
+    /// If it was revealed after a pop, return the states that were popped off,
+    /// topmost state last.
+    fn on_reveal(&mut self, states: Option<Vec<GamemodeBox>>, assets: &Assets) {}
 }
 
 /// Data on how to draw a state
-pub trait GamemodeDrawer: Send {
+pub trait GamemodeDrawer: Send + Any {
     fn draw(&self, assets: &Assets, frame_info: FrameInfo);
 }
 
@@ -43,19 +51,19 @@ pub enum Transition {
     /// Do nothing
     None,
     /// Pop the top mode off and replace it with this
-    Swap(Box<dyn Gamemode>),
+    Swap(GamemodeBox),
     /// Push this mode onto the stack
-    Push(Box<dyn Gamemode>),
+    Push(GamemodeBox),
     /// Pop the top mode off the stack
     Pop,
     /// The most customizable: pop N entries off the stack, then push some new ones.
     /// The last entry in the vec will become the top of the stack.
-    PopNAndPush(usize, Vec<Box<dyn Gamemode>>),
+    PopNAndPush(usize, Vec<GamemodeBox>),
 }
 
 impl Transition {
     /// Apply the transition
-    pub fn apply(self, stack: &mut Vec<Box<dyn Gamemode>>, assets: &Assets) {
+    pub fn apply(self, stack: &mut Vec<GamemodeBox>, assets: &Assets) {
         match self {
             Transition::None => {}
             Transition::Swap(new) => {
@@ -63,29 +71,34 @@ impl Transition {
                     stack.pop();
                 }
                 stack.push(new);
-                stack.last_mut().unwrap().on_reveal(assets);
+                stack.last_mut().unwrap().on_reveal(None, assets);
             }
             Transition::Push(new) => {
                 stack.push(new);
+                stack.last_mut().unwrap().on_reveal(None, assets);
             }
             Transition::Pop => {
                 // At 2 or more, we pop down to at least one state
                 // this would be very bad otherwise
                 if stack.len() >= 2 {
-                    stack.pop();
-                    stack.last_mut().unwrap().on_reveal(assets);
+                    let popped = stack.pop().unwrap();
+                    stack
+                        .last_mut()
+                        .unwrap()
+                        .on_reveal(Some(vec![popped]), assets);
                 }
             }
             Transition::PopNAndPush(count, mut news) => {
                 let lower_limit = if news.is_empty() { 1 } else { 0 };
                 let trunc_len = lower_limit.max(stack.len() - count);
-                stack.truncate(trunc_len);
+                let removed = stack.drain(trunc_len..).collect();
 
                 if news.is_empty() {
                     // we only popped, so the last is revealed!
-                    stack.last_mut().unwrap().on_reveal(assets);
+                    stack.last_mut().unwrap().on_reveal(Some(removed), assets);
                 } else {
                     stack.append(&mut news);
+                    stack.last_mut().unwrap().on_reveal(None, assets);
                 }
             }
         }

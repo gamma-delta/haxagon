@@ -106,36 +106,10 @@ impl Sounds {
 pub struct Shaders {
     pub pattern_beam: Material,
     pub noise: Material,
-
-    pub stencil_write: Material,
-    pub stencil_mask: Material,
 }
 
 impl Shaders {
     async fn init() -> Self {
-        // society if this implemented Default
-        let ss_write = StencilFaceState {
-            fail_op: StencilOp::Replace,
-            depth_fail_op: StencilOp::Replace,
-            pass_op: StencilOp::Replace,
-            test_func: CompareFunc::Always,
-            test_ref: 0,
-            test_mask: 0xffffffff,
-            write_mask: 0xffffffff,
-        };
-        let ss_mask = StencilFaceState {
-            fail_op: StencilOp::Keep,
-            depth_fail_op: StencilOp::Keep,
-            pass_op: StencilOp::Keep,
-            // The equation is: (test_ref & mask) OP (stencil_val & mask)
-            // LHS will be 0, so we allow the pixel through iff the stencil has any
-            // non-0 value drawn to it.
-            test_func: CompareFunc::Never,
-            test_ref: 0,
-            test_mask: 0xffffffff,
-            write_mask: 0xffffffff,
-        };
-
         Self {
             pattern_beam: material_vert_frag(
                 "standard",
@@ -168,40 +142,6 @@ impl Shaders {
                         )),
                         ..Default::default()
                     },
-                },
-            )
-            .await,
-            stencil_write: material(
-                "standard",
-                MaterialParams {
-                    pipeline_params: PipelineParams {
-                        color_write: (false, false, false, false),
-                        stencil_test: Some(StencilState {
-                            back: ss_write,
-                            front: ss_write,
-                        }),
-                        ..Default::default()
-                    },
-                    ..Default::default()
-                },
-            )
-            .await,
-            stencil_mask: material(
-                "standard",
-                MaterialParams {
-                    pipeline_params: PipelineParams {
-                        color_blend: Some(BlendState::new(
-                            Equation::Add,
-                            BlendFactor::Value(BlendValue::SourceAlpha),
-                            BlendFactor::OneMinusValue(BlendValue::SourceAlpha),
-                        )),
-                        stencil_test: Some(StencilState {
-                            back: ss_mask,
-                            front: ss_mask,
-                        }),
-                        ..Default::default()
-                    },
-                    ..Default::default()
                 },
             )
             .await,

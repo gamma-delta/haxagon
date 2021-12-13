@@ -1,3 +1,4 @@
+use ahash::AHashMap;
 use cogs_gamedev::ease::Interpolator;
 use hex2d::{Coordinate, IntegerSpacing};
 use macroquad::prelude::*;
@@ -76,105 +77,18 @@ impl GamemodeDrawer for Drawer {
             }
         }
 
-        for bg_pos in Coordinate::new(0, 0).range_iter(self.radius as _) {
-            let (ox, oy) =
-                bg_pos.to_pixel_integer(IntegerSpacing::PointyTop(MARBLE_SPAN_X, MARBLE_SPAN_Y));
-
-            let corner_x = ox as f32 - MARBLE_SIZE / 2.0 + BOARD_CENTER_X;
-            let corner_y = oy as f32 - MARBLE_SIZE / 2.0 + BOARD_CENTER_Y;
-
-            let (sx, color) = if self.next_spawn_point == Some(bg_pos) {
-                (1, hexcolor(0xff4538_a0))
-            } else {
-                (0, hexcolor(0xdfe0e8_a0))
-            };
-
-            draw_texture_ex(
-                assets.textures.marble_atlas,
-                corner_x,
-                corner_y,
-                color,
-                DrawTextureParams {
-                    source: Some(Rect::new(
-                        sx as f32 * MARBLE_SIZE,
-                        2.0 * MARBLE_SIZE,
-                        MARBLE_SIZE,
-                        MARBLE_SIZE,
-                    )),
-                    ..Default::default()
-                },
-            );
-        }
-
-        for (pos, marble) in self.marbles.iter() {
-            let dark = hexcolor(0x291d2b_ff);
-            let sigil_color = match &self.next_action {
-                Some((BoardAction::ClearBlobs(_), _)) if self.to_remove.contains(pos) => WHITE,
-                Some((BoardAction::DeleteColor(col), timer)) if col == marble => {
-                    if *timer / CLEAR_ALL_BLINK_SPEED % 2 == 0 {
-                        hexcolor(0xffee83_ff)
-                    } else {
-                        WHITE
-                    }
-                }
-                _ => dark,
-            };
-
-            let (corner_x, corner_y) = match &self.next_action {
-                Some((BoardAction::Cycle(path), timer)) if path.contains(pos) => {
-                    let idx = path
-                        .iter()
-                        .enumerate()
-                        .find_map(
-                            |(idx, pathpos)| {
-                                if pathpos == pos {
-                                    Some(idx)
-                                } else {
-                                    None
-                                }
-                            },
-                        )
-                        .unwrap();
-                    let next = path[(idx + 1) % path.len()];
-
-                    let start = pos_to_marble_corner(*pos);
-                    let start = [start.0, start.1];
-                    let end = pos_to_marble_corner(next);
-                    let end = [end.0, end.1];
-
-                    let t = *timer as f32 / BoardAction::CYCLE_TIME as f32;
-                    let middle = Interpolator::lerp(t, start, end);
-                    (middle[0].round(), middle[1].round())
-                }
-                _ => pos_to_marble_corner(*pos),
-            };
-
-            let sx = marble.clone() as u32 as f32 * MARBLE_SIZE;
-            draw_texture_ex(
-                assets.textures.marble_atlas,
-                corner_x,
-                corner_y,
-                WHITE,
-                DrawTextureParams {
-                    source: Some(Rect::new(sx, 8.0, MARBLE_SIZE, MARBLE_SIZE)),
-                    ..Default::default()
-                },
-            );
-            draw_texture_ex(
-                assets.textures.marble_atlas,
-                corner_x,
-                corner_y,
-                sigil_color,
-                DrawTextureParams {
-                    source: Some(Rect::new(sx, 0.0, MARBLE_SIZE, MARBLE_SIZE)),
-                    ..Default::default()
-                },
-            );
-        }
-
-        if let Some(pat) = &self.pattern {
-            draw_pattern(pat, WHITE, assets);
-        }
+        draw_marble_board(
+            vec2(BOARD_CENTER_X, BOARD_CENTER_Y),
+            self.radius,
+            &self.marbles,
+            self.next_action.as_ref(),
+            &self.to_remove,
+            self.next_spawn_point,
+            self.pattern
+                .as_ref()
+                .map(|v| (v.as_slice(), mouse_position_pixel().into())),
+            assets,
+        );
 
         let text = format!("{}", self.score * 100);
         let text_x = BOARD_CENTER_X - 5.0 * (text.len() as f32 - 1.0) / 2.0;
@@ -217,20 +131,132 @@ impl GamemodeDrawer for Drawer {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
+pub fn draw_marble_board(
+    center: Vec2,
+    radius: usize,
+    marbles: &[(Coordinate, Marble)],
+    next_action: Option<&(BoardAction, u32)>,
+    to_remove: &[Coordinate],
+    spawnpoint: Option<Coordinate>,
+    path: Option<(&[Coordinate], Vec2)>,
+    assets: &Assets,
+) {
+    for bg_pos in Coordinate::new(0, 0).range_iter(radius as _) {
+        let (ox, oy) =
+            bg_pos.to_pixel_integer(IntegerSpacing::PointyTop(MARBLE_SPAN_X, MARBLE_SPAN_Y));
+
+        let corner_x = ox as f32 - MARBLE_SIZE / 2.0 + center.x;
+        let corner_y = oy as f32 - MARBLE_SIZE / 2.0 + center.y;
+
+        let (sx, color) = if spawnpoint == Some(bg_pos) {
+            (1, hexcolor(0xff4538_a0))
+        } else {
+            (0, hexcolor(0xdfe0e8_a0))
+        };
+
+        draw_texture_ex(
+            assets.textures.marble_atlas,
+            corner_x,
+            corner_y,
+            color,
+            DrawTextureParams {
+                source: Some(Rect::new(
+                    sx as f32 * MARBLE_SIZE,
+                    2.0 * MARBLE_SIZE,
+                    MARBLE_SIZE,
+                    MARBLE_SIZE,
+                )),
+                ..Default::default()
+            },
+        );
+    }
+
+    for (pos, marble) in marbles.iter() {
+        let dark = hexcolor(0x291d2b_ff);
+        let sigil_color = match next_action {
+            Some((BoardAction::ClearBlobs(_), _)) if to_remove.contains(pos) => WHITE,
+            Some((BoardAction::DeleteColor(col), timer)) if col == marble => {
+                if *timer / CLEAR_ALL_BLINK_SPEED % 2 == 0 {
+                    hexcolor(0xffee83_ff)
+                } else {
+                    WHITE
+                }
+            }
+            _ => dark,
+        };
+
+        let (corner_x, corner_y) = match next_action {
+            Some((BoardAction::Cycle(path), timer)) if path.contains(pos) => {
+                let idx = path
+                    .iter()
+                    .enumerate()
+                    .find_map(
+                        |(idx, pathpos)| {
+                            if pathpos == pos {
+                                Some(idx)
+                            } else {
+                                None
+                            }
+                        },
+                    )
+                    .unwrap();
+                let next = path[(idx + 1) % path.len()];
+
+                let start = pos_to_marble_corner(*pos, center);
+                let start = [start.0, start.1];
+                let end = pos_to_marble_corner(next, center);
+                let end = [end.0, end.1];
+
+                let t = *timer as f32 / BoardAction::CYCLE_TIME as f32;
+                let middle = Interpolator::lerp(t, start, end);
+                (middle[0].round(), middle[1].round())
+            }
+            _ => pos_to_marble_corner(*pos, center),
+        };
+
+        let sx = marble.clone() as u32 as f32 * MARBLE_SIZE;
+        draw_texture_ex(
+            assets.textures.marble_atlas,
+            corner_x,
+            corner_y,
+            WHITE,
+            DrawTextureParams {
+                source: Some(Rect::new(sx, 8.0, MARBLE_SIZE, MARBLE_SIZE)),
+                ..Default::default()
+            },
+        );
+        draw_texture_ex(
+            assets.textures.marble_atlas,
+            corner_x,
+            corner_y,
+            sigil_color,
+            DrawTextureParams {
+                source: Some(Rect::new(sx, 0.0, MARBLE_SIZE, MARBLE_SIZE)),
+                ..Default::default()
+            },
+        );
+    }
+
+    if let Some((path, terminus)) = path {
+        draw_pattern(path, terminus, center, WHITE, assets);
+    }
+}
+
 /// give the corner x/y poses of the marble at the given position
-fn pos_to_marble_corner(pos: Coordinate) -> (f32, f32) {
+fn pos_to_marble_corner(pos: Coordinate, center: Vec2) -> (f32, f32) {
     let (ox, oy) = pos.to_pixel_integer(IntegerSpacing::PointyTop(MARBLE_SPAN_X, MARBLE_SPAN_Y));
-    let corner_x = ox as f32 - MARBLE_SIZE / 2.0 + BOARD_CENTER_X;
-    let corner_y = oy as f32 - MARBLE_SIZE / 2.0 + BOARD_CENTER_Y;
+    let corner_x = ox as f32 - MARBLE_SIZE / 2.0 + center.x;
+    let corner_y = oy as f32 - MARBLE_SIZE / 2.0 + center.y;
     (corner_x, corner_y)
 }
 
-fn draw_pattern(pat: &[Coordinate], color: Color, assets: &Assets) {
+fn draw_pattern(pat: &[Coordinate], terminus: Vec2, center: Vec2, color: Color, assets: &Assets) {
     gl_use_material(assets.shaders.pattern_beam);
 
     for span in pat.windows(2) {
-        let (x1, y1) = pos_to_marble_corner(span[0]);
-        let (x2, y2) = pos_to_marble_corner(span[1]);
+        let (x1, y1) = pos_to_marble_corner(span[0], center);
+        let (x2, y2) = pos_to_marble_corner(span[1], center);
 
         draw_line_but_with_uvs(
             x1 + MARBLE_SIZE / 2.0,
@@ -242,8 +268,8 @@ fn draw_pattern(pat: &[Coordinate], color: Color, assets: &Assets) {
         );
     }
 
-    let (x1, y1) = pos_to_marble_corner(*pat.last().unwrap());
-    let (x2, y2) = mouse_position_pixel();
+    let (x1, y1) = pos_to_marble_corner(*pat.last().unwrap(), center);
+    let (x2, y2) = terminus.into();
     draw_line_but_with_uvs(
         x1 + MARBLE_SIZE / 2.0,
         y1 + MARBLE_SIZE / 2.0,
