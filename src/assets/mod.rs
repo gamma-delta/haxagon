@@ -71,6 +71,7 @@ pub struct Sounds {
 
     pub music0: Sound,
     pub music1: Sound,
+    pub music2: Sound,
 
     pub select: Sound,
     pub shunt: Sound,
@@ -90,6 +91,7 @@ impl Sounds {
 
             music0: sound("music/music0").await,
             music1: sound("music/music1").await,
+            music2: sound("music/music2").await,
 
             select: sound("sfx/select").await,
             shunt: sound("sfx/shunt").await,

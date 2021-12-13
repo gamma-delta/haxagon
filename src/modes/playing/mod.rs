@@ -118,7 +118,11 @@ impl ModePlaying {
         play_settings: PlaySettings,
         assets: &Assets,
     ) -> Self {
-        let tracks = [assets.sounds.music0, assets.sounds.music1];
+        let tracks = [
+            assets.sounds.music0,
+            assets.sounds.music1,
+            assets.sounds.music2,
+        ];
         let music = tracks[QuadRand.gen_range(0..tracks.len())];
         Self {
             board: Board::new(board_settings),
