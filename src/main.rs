@@ -22,8 +22,6 @@ use crate::{
     utils::draw::width_height_deficit,
 };
 
-use ::rand::Rng;
-use macroquad::rand::compat::QuadRand;
 use macroquad::{miniquad::conf::Icon, prelude::*};
 use utils::draw::hexcolor;
 
@@ -33,9 +31,6 @@ const ASPECT_RATIO: f32 = WIDTH / HEIGHT;
 
 const UPDATES_PER_DRAW: u64 = 1;
 const UPDATE_DT: f32 = 1.0 / (30.0 * UPDATES_PER_DRAW as f32);
-
-/// Number of frames we seed the RNG for.
-const RANDOM_ENTROPY_TIME: u64 = 300;
 
 /// The `macroquad::main` macro uses this.
 fn window_conf() -> Conf {
@@ -64,6 +59,8 @@ fn window_conf() -> Conf {
 
 #[macroquad::main(window_conf)]
 async fn main() {
+    macroquad::rand::srand(macroquad::miniquad::date::now().to_bits());
+
     let loading = Texture2D::from_file_with_format(
         include_bytes!("../assets/textures/splash/loading.png"),
         None,
@@ -166,13 +163,6 @@ async fn gameloop(assets: &'static Assets) {
         frames_ran: 0,
     };
     loop {
-        if frame_info.frames_ran <= RANDOM_ENTROPY_TIME {
-            let (mx, my) = mouse_position();
-            macroquad::rand::srand(
-                (mx.to_bits() as u64 + ((my.to_bits() as u64) << 32)) ^ QuadRand.gen::<u64>(),
-            );
-        }
-
         frame_info.dt = macroquad::time::get_frame_time();
 
         let drawer = match draw_rx.try_recv() {
@@ -238,13 +228,6 @@ async fn gameloop(assets: &'static Assets) {
         frames_ran: 0,
     };
     loop {
-        if frame_info.frames_ran <= RANDOM_ENTROPY_TIME {
-            let (mx, my) = mouse_position();
-            macroquad::rand::srand(
-                (mx.to_bits() as u64 + ((my.to_bits() as u64) << 32)) ^ QuadRand.gen::<u64>(),
-            );
-        }
-
         frame_info.dt = UPDATE_DT;
 
         // Update the current state.

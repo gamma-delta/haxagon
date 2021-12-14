@@ -1,3 +1,5 @@
+use std::default;
+
 use cogs_gamedev::controls::InputHandler;
 use macroquad::{
     audio::play_sound_once,
@@ -18,20 +20,13 @@ use crate::{
 
 use super::DontRestartMusicToken;
 
-const VERB: &str = if cfg!(any(target_os = "ios", target_os = "android")) {
-    "TAP"
-} else {
-    "CLICK"
-};
-
 #[derive(Debug, Clone)]
-pub struct ModeTutorial {
+pub struct ModeCredits {
     b_back: Button,
-
-    billboard: Billboard,
+    message: String,
 }
 
-impl Gamemode for ModeTutorial {
+impl Gamemode for ModeCredits {
     fn update(
         &mut self,
         controls: &InputSubscriber,
@@ -57,16 +52,23 @@ impl Gamemode for ModeTutorial {
     }
 }
 
-impl GamemodeDrawer for ModeTutorial {
+impl GamemodeDrawer for ModeCredits {
     fn draw(&self, assets: &Assets, frame_info: FrameInfo) {
         clear_background(hexcolor(0x21181b_ff));
-
-        self.billboard.draw();
 
         let color = hexcolor(0x4b1d52_ff);
         let highlight = hexcolor(0x692464_ff);
         let border = hexcolor(0xcc2f7b_ff);
         let blight = hexcolor(0xff5277_ff);
+
+        draw_pixel_text(
+            &self.message,
+            3.0,
+            3.0,
+            TextAlign::Left,
+            blight,
+            assets.textures.fonts.small,
+        );
 
         self.b_back.draw(color, border, highlight, blight, 1.01);
         draw_pixel_text(
@@ -84,27 +86,37 @@ impl GamemodeDrawer for ModeTutorial {
     }
 }
 
-impl ModeTutorial {
-    pub fn new(assets: &Assets) -> Self {
-        let msg = [
-            "[$cff5277$HAXAGON INSTRUCTIONS\n\n",
-            VERB,
-            " AND DRAG ON THE BOARD IN A\n",
-            "CLOSED LOOP TO MOVE MARBLES.[$v3$\n$v]",
-            "MAKE GROUPS OF 4 OR MORE MARBLES\n",
-            "TO CLEAR THEM FOR POINTS.[$v3$\n$v]",
-            "NEW MARBLES SPAWN AT THE RED DOT.\n",
-            "DON'T LET THE BOARD FILL UP!",
-        ]
-        .concat();
-        let spans = Billboard::from_markup(msg, assets.textures.fonts.small).unwrap();
+impl ModeCredits {
+    pub fn new() -> Self {
+        let message = format!(
+            r"HAXAGON v{}
+A FALLING COLORS GAME BY PETRAKAT
+WRITTEN IN RUST WITH MACROQUAD
+
+SPECIAL THANKS TO:
+- FEDOR FOR MAKING MACROQUAD AND 
+  PROVIDING TECH SUPPORT
+- DPC FOR THEIR HEX_2D CRATE
+  AND REDBLOBGAMES FOR THEIR HEX
+  GRID ARTICLE, FOR FUELING MY
+  HEXAGON ADDICTION
+- ZACH BARTH FOR MAKING HACK*MATCH
+  AND JONATHON BLOW FOR MAKING
+  THE WITNESS, THE TWO MAIN 
+  INSPIRATIONS FOR THIS GAME
+- CASS CUTTLEFISH FOR WRITING HER
+  GUEST TRACK, <name todo>
+
+THIS GAME IS OPEN SOURCE ON GITHUB
+GITHUB.COM/GAMMA-DELTA/HAXAGON",
+            env!("CARGO_PKG_VERSION")
+        );
 
         let w = 4.0 * 12.0;
-
+        let h = 9.0;
         Self {
-            b_back: Button::new(WIDTH - w - 3.0, 3.0, w, 9.0),
-
-            billboard: Billboard::new(spans, vec2(3.0, 10.0), Vec2::ZERO, None),
+            b_back: Button::new(WIDTH - w - 3.0, HEIGHT - h - 3.0, w, h),
+            message,
         }
     }
 }

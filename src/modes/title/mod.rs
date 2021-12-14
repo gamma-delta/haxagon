@@ -1,11 +1,10 @@
-use std::f32::consts::TAU;
+mod credits;
+mod tutorial;
 
-use ::rand::Rng;
+use std::any::{Any, TypeId};
+
 use cogs_gamedev::controls::InputHandler;
-use hex2d::{Angle, Direction};
-use macroquad::audio::{play_sound, stop_sound, PlaySoundParams};
-use macroquad::rand::compat::QuadRand;
-use macroquad::{audio::play_sound_once, miniquad as mq, prelude::*};
+use macroquad::{audio::*, prelude::*};
 
 use crate::{
     assets::Assets,
@@ -19,6 +18,8 @@ use crate::{
     },
     HEIGHT, WIDTH,
 };
+
+use self::{credits::ModeCredits, tutorial::ModeTutorial};
 
 use super::playing::PlaySettings;
 use super::ModePlaying;
@@ -99,7 +100,9 @@ impl Gamemode for ModeTitle {
                 )));
                 stop_sound(assets.sounds.title_music);
             } else if self.b_tutorial.mouse_hovering() {
-                // ...
+                trans = Transition::Push(Box::new(ModeTutorial::new(assets)));
+            } else if self.b_credits.mouse_hovering() {
+                trans = Transition::Push(Box::new(ModeCredits::new()));
             }
         }
 
@@ -120,15 +123,18 @@ impl Gamemode for ModeTitle {
         Box::new(self.clone())
     }
 
-    fn on_reveal(&mut self, states: Option<Vec<GamemodeBox>>, assets: &Assets) {
+    fn on_reveal(&mut self, data: Option<Box<dyn Any>>, assets: &Assets) {
         self.hexagons.clear();
+        let mut restart_music = true;
 
-        let mut play_music = true;
-        if let Some(states) = states {
-            // todo: get settings
+        if let Some(data) = data {
+            let data = &*data as &dyn Any;
+            if data.is::<DontRestartMusicToken>() {
+                restart_music = false;
+            }
         }
 
-        if play_music {
+        if restart_music {
             play_sound(
                 assets.sounds.title_music,
                 PlaySoundParams {
@@ -159,7 +165,7 @@ impl GamemodeDrawer for ModeTitle {
         }
 
         let logo_x = WIDTH / 2.0 - assets.textures.title_logo.width() / 2.0;
-        let logo_y = HEIGHT * 0.2;
+        let logo_y = HEIGHT * 0.15;
         draw_texture(assets.textures.title_logo, logo_x, logo_y, WHITE);
 
         let color = hexcolor(0x4b1d52_ff);
@@ -170,11 +176,11 @@ impl GamemodeDrawer for ModeTitle {
         for (button, text) in [
             (&self.b_play, "PLAY"),
             (&self.b_mode_select, "MODE SELECT"),
-            (&self.b_tutorial, "TUTORIAL"),
+            (&self.b_tutorial, "HOW TO PLAY"),
             (&self.b_settings, "SETTINGS"),
             (&self.b_credits, "CREDITS"),
         ] {
-            button.draw(color, border, highlight, blight, 1.1);
+            button.draw(color, border, highlight, blight, 1.01);
 
             let text_color = if button.mouse_hovering() {
                 blight
@@ -195,22 +201,23 @@ impl GamemodeDrawer for ModeTitle {
 
 impl ModeTitle {
     pub fn new() -> Self {
-        let w = 4.0 * 12.0;
+        let w = 4.0 * 13.0;
         let x = WIDTH / 2.0 - w / 2.0;
 
         let h = 9.0;
         let y_stride = h + 2.0;
-        let y = HEIGHT * 0.5 - y_stride;
+        let y = HEIGHT * 0.5;
 
         let wide_w = 4.0 * 16.0;
         let wide_x = WIDTH / 2.0 - wide_w / 2.0;
 
         Self {
-            b_play: Button::new(x, y, w, h),
-            b_mode_select: Button::new(x, y + y_stride, w, h),
-            b_tutorial: Button::new(x, y + 2.0 * y_stride, w, h),
-            b_settings: Button::new(x, y + 3.0 * y_stride, w, h),
-            b_credits: Button::new(wide_x, y + 4.5 * y_stride, wide_w, h),
+            b_play: Button::new(x, y - y_stride, w, h),
+            b_mode_select: Button::new(x, y, w, h),
+            b_tutorial: Button::new(x, y + y_stride, w, h),
+            b_settings: Button::new(x, y + 2.0 * y_stride, w, h),
+
+            b_credits: Button::new(wide_x, y + 4.0 * y_stride, wide_w, h),
 
             settings: PlaySettings::default(),
 
@@ -224,16 +231,4 @@ fn hex_radius(time: u32) -> f32 {
     time as f32
 }
 
-fn new_directions() -> (Direction, Direction) {
-    let in_dir = Direction::from_int(QuadRand.gen_range(0..6));
-    let out_dir = in_dir
-        + match QuadRand.gen_range(0..5) {
-            0 => Angle::Forward,
-            1 => Angle::Left,
-            2 => Angle::LeftBack,
-            3 => Angle::Right,
-            4 => Angle::RightBack,
-            _ => unreachable!(),
-        };
-    (in_dir, out_dir)
-}
+struct DontRestartMusicToken;

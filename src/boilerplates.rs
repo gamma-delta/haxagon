@@ -23,9 +23,8 @@ pub trait Gamemode: Any {
     /// Called when the state newly comes on top of the stack,
     /// either from being pushed there or revealed after a pop.
     ///
-    /// If it was revealed after a pop, return the states that were popped off,
-    /// topmost state last.
-    fn on_reveal(&mut self, states: Option<Vec<GamemodeBox>>, assets: &Assets) {}
+    /// If the `PopWith` variant of `Transition` was used, this contains the data popped.
+    fn on_reveal(&mut self, passed: Option<Box<dyn Any>>, assets: &Assets) {}
 }
 
 /// Data on how to draw a state
@@ -54,8 +53,10 @@ pub enum Transition {
     Swap(GamemodeBox),
     /// Push this mode onto the stack
     Push(GamemodeBox),
-    /// Pop the top mode off the stack
+    /// Pop the current mode off the stack
     Pop,
+    /// Pop the current mode and pass the given data down to the next state.
+    PopWith(Box<dyn Any>),
     /// The most customizable: pop N entries off the stack, then push some new ones.
     /// The last entry in the vec will become the top of the stack.
     PopNAndPush(usize, Vec<GamemodeBox>),
@@ -65,42 +66,39 @@ impl Transition {
     /// Apply the transition
     pub fn apply(self, stack: &mut Vec<GamemodeBox>, assets: &Assets) {
         match self {
-            Transition::None => {}
+            Transition::None => {
+                return;
+            }
             Transition::Swap(new) => {
                 if !stack.is_empty() {
                     stack.pop();
                 }
                 stack.push(new);
-                stack.last_mut().unwrap().on_reveal(None, assets);
             }
             Transition::Push(new) => {
                 stack.push(new);
-                stack.last_mut().unwrap().on_reveal(None, assets);
             }
             Transition::Pop => {
                 // At 2 or more, we pop down to at least one state
                 // this would be very bad otherwise
                 if stack.len() >= 2 {
-                    let popped = stack.pop().unwrap();
-                    stack
-                        .last_mut()
-                        .unwrap()
-                        .on_reveal(Some(vec![popped]), assets);
+                    stack.pop().unwrap();
                 }
             }
-            Transition::PopNAndPush(count, mut news) => {
+            Transition::PopWith(data) => {
+                if stack.len() >= 2 {
+                    stack.pop().unwrap();
+                    stack.last_mut().unwrap().on_reveal(Some(data), assets);
+                }
+                return;
+            }
+            Transition::PopNAndPush(count, news) => {
                 let lower_limit = if news.is_empty() { 1 } else { 0 };
                 let trunc_len = lower_limit.max(stack.len() - count);
-                let removed = stack.drain(trunc_len..).collect();
-
-                if news.is_empty() {
-                    // we only popped, so the last is revealed!
-                    stack.last_mut().unwrap().on_reveal(Some(removed), assets);
-                } else {
-                    stack.append(&mut news);
-                    stack.last_mut().unwrap().on_reveal(None, assets);
-                }
+                stack.truncate(trunc_len);
+                stack.extend(news);
             }
         }
+        stack.last_mut().unwrap().on_reveal(None, assets);
     }
 }
