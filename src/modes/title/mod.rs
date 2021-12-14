@@ -1,5 +1,4 @@
-mod credits;
-mod tutorial;
+mod text_displayer;
 
 use std::any::{Any, TypeId};
 
@@ -19,7 +18,7 @@ use crate::{
     HEIGHT, WIDTH,
 };
 
-use self::{credits::ModeCredits, tutorial::ModeTutorial};
+use self::text_displayer::ModeTextDisplayer;
 
 use super::playing::PlaySettings;
 use super::ModePlaying;
@@ -99,10 +98,65 @@ impl Gamemode for ModeTitle {
                     assets,
                 )));
                 stop_sound(assets.sounds.title_music);
-            } else if self.b_tutorial.mouse_hovering() {
-                trans = Transition::Push(Box::new(ModeTutorial::new(assets)));
-            } else if self.b_credits.mouse_hovering() {
-                trans = Transition::Push(Box::new(ModeCredits::new()));
+            } else {
+                let message = if self.b_tutorial.mouse_hovering() {
+                    let msg = format!(
+                        r"HAXAGON INSTRUCTIONS
+
+{} AND DRAG ON THE BOARD TO DRAW 
+PATTERNS. DRAW A CLOSED LOOP TO MOVE 
+MARBLES ALONG THE LOOP.
+
+MOVE MARBLES INTO GROUPS OF 4 OR MORE 
+TO CLEAR THEM FOR POINTS.
+
+DRAW A HEXAGON WITH ALL THE CORNERS THE 
+SAME COLOR TO CLEAR ALL MARBLES
+OF THAT COLOR.
+
+MARBLES FALL AWAY FROM THE CENTER,
+IF NOT SUPPORTED BY OTHER MARBLES.
+
+NEW MARBLES SPAWN AT THE RED DOT.
+DON'T LET THE BOARD FILL UP!",
+                        if cfg!(any(target_os = "ios", target_os = "android")) {
+                            "TAP"
+                        } else {
+                            "CLICK"
+                        }
+                    );
+                    Some((msg, hexcolor(0x291d2b_ff)))
+                } else if self.b_credits.mouse_hovering() {
+                    let msg = format!(
+                        r"HAXAGON v{}
+A FALLING COLORS GAME BY PETRAKAT
+WRITTEN IN RUST WITH MACROQUAD
+
+SPECIAL THANKS TO:
+- FEDOR FOR MAKING MACROQUAD AND 
+  PROVIDING TECH SUPPORT
+- DPC FOR THEIR HEX_2D CRATE
+  AND REDBLOBGAMES FOR THEIR HEX
+  GRID ARTICLE, FOR FUELING MY
+  HEXAGON ADDICTION
+- ZACH BARTH FOR MAKING HACK*MATCH
+  AND JONATHON BLOW FOR MAKING
+  THE WITNESS, THE TWO MAIN 
+  INSPIRATIONS FOR THIS GAME
+- CASS CUTTLEFISH FOR WRITING HER
+  GUEST TRACK, <name todo>
+
+THIS GAME IS OPEN SOURCE ON GITHUB
+GITHUB.COM/GAMMA-DELTA/HAXAGON",
+                        env!("CARGO_PKG_VERSION")
+                    );
+                    Some((msg, hexcolor(0x21181b_ff)))
+                } else {
+                    None
+                };
+                if let Some((message, bg_color)) = message {
+                    trans = Transition::Push(Box::new(ModeTextDisplayer::new(message, bg_color)))
+                }
             }
         }
 

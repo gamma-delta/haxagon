@@ -1,9 +1,7 @@
-use std::default;
-
 use cogs_gamedev::controls::InputHandler;
 use macroquad::{
     audio::play_sound_once,
-    prelude::{clear_background, vec2, Vec2},
+    prelude::{clear_background, vec2, Color, Vec2},
 };
 
 use crate::{
@@ -21,12 +19,13 @@ use crate::{
 use super::DontRestartMusicToken;
 
 #[derive(Debug, Clone)]
-pub struct ModeCredits {
-    b_back: Button,
+pub struct ModeTextDisplayer {
     message: String,
+    bg_color: Color,
+    b_back: Button,
 }
 
-impl Gamemode for ModeCredits {
+impl Gamemode for ModeTextDisplayer {
     fn update(
         &mut self,
         controls: &InputSubscriber,
@@ -52,9 +51,9 @@ impl Gamemode for ModeCredits {
     }
 }
 
-impl GamemodeDrawer for ModeCredits {
+impl GamemodeDrawer for ModeTextDisplayer {
     fn draw(&self, assets: &Assets, frame_info: FrameInfo) {
-        clear_background(hexcolor(0x21181b_ff));
+        clear_background(self.bg_color);
 
         let color = hexcolor(0x4b1d52_ff);
         let highlight = hexcolor(0x692464_ff);
@@ -86,37 +85,15 @@ impl GamemodeDrawer for ModeCredits {
     }
 }
 
-impl ModeCredits {
-    pub fn new() -> Self {
-        let message = format!(
-            r"HAXAGON v{}
-A FALLING COLORS GAME BY PETRAKAT
-WRITTEN IN RUST WITH MACROQUAD
-
-SPECIAL THANKS TO:
-- FEDOR FOR MAKING MACROQUAD AND 
-  PROVIDING TECH SUPPORT
-- DPC FOR THEIR HEX_2D CRATE
-  AND REDBLOBGAMES FOR THEIR HEX
-  GRID ARTICLE, FOR FUELING MY
-  HEXAGON ADDICTION
-- ZACH BARTH FOR MAKING HACK*MATCH
-  AND JONATHON BLOW FOR MAKING
-  THE WITNESS, THE TWO MAIN 
-  INSPIRATIONS FOR THIS GAME
-- CASS CUTTLEFISH FOR WRITING HER
-  GUEST TRACK, <name todo>
-
-THIS GAME IS OPEN SOURCE ON GITHUB
-GITHUB.COM/GAMMA-DELTA/HAXAGON",
-            env!("CARGO_PKG_VERSION")
-        );
-
+impl ModeTextDisplayer {
+    pub fn new(message: String, bg_color: Color) -> Self {
         let w = 4.0 * 12.0;
         let h = 9.0;
+
         Self {
-            b_back: Button::new(WIDTH - w - 3.0, HEIGHT - h - 3.0, w, h),
             message,
+            bg_color,
+            b_back: Button::new(WIDTH - w - 3.0, HEIGHT - h - 3.0, w, h),
         }
     }
 }
