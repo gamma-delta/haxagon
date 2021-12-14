@@ -7,11 +7,16 @@ use quad_rand::compat::QuadRand;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 
+pub const SCORE_TIMER: u32 = 30;
+
 /// Board full of marbles to play on
 #[derive(Debug)]
 pub struct Board {
     marbles: AHashMap<Coordinate, Marble>,
     score: u32,
+    /// Each time we gain points, push the points to here.
+    score_queue: VecDeque<ScorePacket>,
+    score_timer: u32,
 
     action_queue: VecDeque<BoardAction>,
     /// Time counting up until we do the next action
@@ -34,6 +39,8 @@ impl Board {
         let mut out = Board {
             marbles: AHashMap::new(),
             score: 0,
+            score_timer: 0,
+            score_queue: VecDeque::new(),
             action_queue: VecDeque::new(),
             action_timer: 0,
             next_spawn_timer: 0,
@@ -67,6 +74,15 @@ impl Board {
             } else {
                 // oh no we couldn't find a place to be
                 return true;
+            }
+        }
+
+        if !self.score_queue.is_empty() {
+            self.score_timer += 1;
+            if self.score_timer >= SCORE_TIMER {
+                let packet = self.score_queue.pop_front().unwrap();
+                self.score += packet.base * packet.multiplier;
+                self.score_timer = 0;
             }
         }
 
@@ -232,7 +248,7 @@ impl Board {
 
     /// Run the action on the board
     fn execute_action(&mut self, action: BoardAction) {
-        match action {
+        match &action {
             BoardAction::Cycle(poses) => {
                 if poses.len() >= 2 {
                     // Swap in a reversed order to end up with rotation in the right order.
@@ -249,24 +265,56 @@ impl Board {
                 }
             }
             BoardAction::DeleteColor(color) => {
-                let original_len = self.marbles.len();
-                self.marbles.retain(|_, marble| marble != &color);
-                self.score += (original_len - self.marbles.len()) as u32;
+                let score = self.get_score_from_action(&action).unwrap();
+                self.score_queue.push_back(score);
+                self.marbles.retain(|_, marble| marble != color);
             }
-            BoardAction::ClearBlobs(multiplier) => {
+            BoardAction::ClearBlobs(_) => {
                 let blobs = self.find_blobs();
-                let blob_count = blobs.len();
-                let to_remove = blobs.into_iter().flatten().collect::<Vec<_>>();
-                if !to_remove.is_empty() {
-                    // Each marble above 6 is counted double
-                    let score = to_remove.len() + to_remove.len().saturating_sub(6);
-                    self.score += score as u32 * multiplier * blob_count as u32;
-                    // This might cause a cascade: immediately do another
+                if !blobs.is_empty() {
+                    let score = self.get_score_from_action(&action).unwrap();
+                    self.score_queue.push_back(score);
+                    // This might cause a cascade: immediately try again.
                     self.action_queue
-                        .push_front(BoardAction::ClearBlobs(multiplier + 1));
-                    for c in to_remove {
+                        .push_front(BoardAction::ClearBlobs(score.multiplier));
+
+                    for c in blobs.into_iter().flatten() {
                         self.marbles.remove(&c);
                     }
+                }
+            }
+        }
+    }
+
+    pub fn get_score_from_action(&self, action: &BoardAction) -> Option<ScorePacket> {
+        match action {
+            BoardAction::Cycle(_) => None,
+            BoardAction::DeleteColor(color) => {
+                let remove_ct = self
+                    .marbles
+                    .values()
+                    .filter(|&other| other == color)
+                    .count();
+                Some(ScorePacket {
+                    base: remove_ct as u32,
+                    multiplier: 1,
+                })
+            }
+            &BoardAction::ClearBlobs(premult) => {
+                let blobs = self.find_blobs();
+                if !blobs.is_empty() {
+                    let (base, multiplier) =
+                        blobs
+                            .into_iter()
+                            .fold((0u32, premult), |(base, mult), blob| {
+                                (
+                                    base + blob.len() as u32,
+                                    mult + 1 + (blob.len() >= 6) as u32,
+                                )
+                            });
+                    Some(ScorePacket { base, multiplier })
+                } else {
+                    None
                 }
             }
         }
@@ -372,6 +420,13 @@ impl Board {
             marble = marble.another();
         }
     }
+
+    /// Get a reference to the board's score queue.
+    ///
+    /// The score about to be added is at the bottom.
+    pub fn score_queue(&self) -> &VecDeque<ScorePacket> {
+        &self.score_queue
+    }
 }
 
 /// Pieces that go on the board.
@@ -430,7 +485,7 @@ pub enum BoardAction {
     Cycle(Vec<Coordinate>),
     /// Delete all marbles of the given color
     DeleteColor(Marble),
-    /// Clear all the large enough blobs of marbles, with the given score multiplier
+    /// Clear all the large enough blobs of marbles, with the given additional score multiplier
     ClearBlobs(u32),
 }
 
@@ -447,6 +502,22 @@ impl BoardAction {
             BoardAction::ClearBlobs(_) => Self::CLEAR_BLOBS_TIME,
         }
     }
+}
+
+/// One increase to the score.
+///
+/// Each marble removed from the board contributes one base point.
+///
+/// The multiplier starts at 1.
+///
+/// - Clearing more than one blob adds 1 to the multiplier for each blob.
+/// - Each blob with a size more than 6 adds 1 to the multiplier.
+/// - "Cascading", where clearing a blob leads to marbles falling and clearing more marbles,
+///   makes the next clear start at this multiplier.
+#[derive(Debug, Clone, Copy)]
+pub struct ScorePacket {
+    pub base: u32,
+    pub multiplier: u32,
 }
 
 #[derive(Debug, Clone)]

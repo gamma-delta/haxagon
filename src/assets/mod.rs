@@ -74,10 +74,13 @@ pub struct Sounds {
     pub music2: Sound,
 
     pub select: Sound,
+    pub close_loop: Sound,
     pub shunt: Sound,
     pub clear1: Sound,
     pub clear2: Sound,
     pub clear3: Sound,
+    pub clear4: Sound,
+    pub clear5: Sound,
     pub clear_all: Sound,
 }
 
@@ -94,10 +97,13 @@ impl Sounds {
             music2: sound("music/music2").await,
 
             select: sound("sfx/select").await,
+            close_loop: sound("sfx/close_loop").await,
             shunt: sound("sfx/shunt").await,
             clear1: sound("sfx/clear1").await,
             clear2: sound("sfx/clear2").await,
             clear3: sound("sfx/clear3").await,
+            clear4: sound("sfx/clear4").await,
+            clear5: sound("sfx/clear5").await,
             clear_all: sound("sfx/clear_all").await,
         }
     }

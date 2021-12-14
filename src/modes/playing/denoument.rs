@@ -247,7 +247,7 @@ impl GamemodeDrawer for ModeLosingScreen {
                 prev * 100
             ),
             Some(prev) => format!(
-                "GAME OVER\nSCORE: {}\nPREVIOUS: {}",
+                "GAME OVER\nSCORE: {}\nHISCORE: {}",
                 self.score * 100,
                 prev * 100
             ),

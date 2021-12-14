@@ -97,6 +97,16 @@ impl Gamemode for ModePlaying {
         };
         let next_action = next_action.map(|action| (action, self.board.action_timer()));
 
+        let mut scores = next_action
+            .as_ref()
+            .and_then(|(action, _)| {
+                self.board
+                    .get_score_from_action(action)
+                    .map(|score| vec![score])
+            })
+            .unwrap_or_default();
+        scores.extend(self.board.score_queue().iter().copied());
+
         Box::new(Drawer {
             marbles,
             pattern: self.pattern.clone(),
@@ -106,6 +116,7 @@ impl Gamemode for ModePlaying {
             to_remove,
             bg_funni_timer: self.bg_funni_timer,
             score: self.board.score(),
+            score_queue: scores,
             paused: self.paused,
             settings: self.settings,
         })
@@ -157,32 +168,49 @@ impl ModePlaying {
                 let pos = mouse_to_hex();
                 if self.board.is_in_bounds(&pos) {
                     let mut maybe_pat = pat.clone();
-                    maybe_pat.push(pos);
-                    match is_pattern_valid(&maybe_pat, self.board.get_marbles()) {
-                        PatternExtensionValidity::Continue | PatternExtensionValidity::Closing => {
-                            *pat = maybe_pat;
-                            play_sound(
-                                assets.sounds.select,
-                                PlaySoundParams {
-                                    looped: false,
-                                    volume: 1.0,
-                                },
-                            );
+                    if matches!(
+                        is_pattern_valid(&maybe_pat, self.board.get_marbles()),
+                        PatternExtensionValidity::Continue
+                    ) {
+                        // Only look at this next possibility if we can actually extend it.
+                        maybe_pat.push(pos);
+                        match is_pattern_valid(&maybe_pat, self.board.get_marbles()) {
+                            validity
+                            @
+                            (PatternExtensionValidity::Continue
+                            | PatternExtensionValidity::Finished) => {
+                                *pat = maybe_pat;
+                                let sound =
+                                    if matches!(validity, PatternExtensionValidity::Continue) {
+                                        assets.sounds.select
+                                    } else {
+                                        assets.sounds.close_loop
+                                    };
+                                play_sound(
+                                    sound,
+                                    PlaySoundParams {
+                                        looped: false,
+                                        volume: 1.0,
+                                    },
+                                );
+                            }
+                            PatternExtensionValidity::Invalid => {}
                         }
-                        PatternExtensionValidity::Invalid => {}
                     }
                 }
             }
             // mouse up but with pattern
             Some(pat) => {
-                if PatternExtensionValidity::Closing
-                    == is_pattern_valid(pat, self.board.get_marbles())
-                {
+                if matches!(
+                    is_pattern_valid(pat, self.board.get_marbles()),
+                    PatternExtensionValidity::Finished
+                ) {
                     let pat = std::mem::take(pat);
                     let action = self.pattern_to_action(pat);
 
                     self.board.push_action(action);
-                    self.board.push_action(BoardAction::ClearBlobs(1));
+                    // We start with an add'l multiplier of 0
+                    self.board.push_action(BoardAction::ClearBlobs(0));
                 }
                 // if we're not pressing gotta clear it
                 self.pattern = None;
@@ -196,15 +224,20 @@ impl ModePlaying {
             let sound = match next_action {
                 BoardAction::Cycle(_) if timer == 0 => Some((assets.sounds.shunt, 1.0)),
                 BoardAction::DeleteColor(_) if timer == 0 => Some((assets.sounds.clear_all, 1.0)),
-                BoardAction::ClearBlobs(mult) if timer == finish_time - 1 => {
-                    let mult = self.board.find_blobs().len() as u32 + *mult;
-                    let sound = match mult {
-                        // There will always be at least 1 blob
-                        0..=2 => assets.sounds.clear1,
-                        3 => assets.sounds.clear2,
-                        _ => assets.sounds.clear3,
-                    };
-                    Some((sound, 1.0))
+                BoardAction::ClearBlobs(_) if timer == finish_time - 1 => {
+                    if let Some(score) = self.board.get_score_from_action(next_action) {
+                        let mult = score.multiplier;
+                        let sound = match mult {
+                            1 => assets.sounds.clear1,
+                            2 => assets.sounds.clear2,
+                            3 => assets.sounds.clear3,
+                            4 => assets.sounds.clear4,
+                            _ => assets.sounds.clear5,
+                        };
+                        Some((sound, 1.0))
+                    } else {
+                        None
+                    }
                 }
                 _ => None,
             };
@@ -334,56 +367,59 @@ fn is_pattern_valid(
     pattern: &[Coordinate],
     board: &AHashMap<Coordinate, Marble>,
 ) -> PatternExtensionValidity {
-    if !pattern.iter().all(|c| board.get(c).is_some()) {
-        return PatternExtensionValidity::Invalid;
+    for pair in pattern.windows(2) {
+        let (a, b) = (pair[0], pair[1]);
+        // this will do some re-checking of coords but whatever
+        if !board.contains_key(&a) || !board.contains_key(&b) {
+            return PatternExtensionValidity::Invalid;
+        }
+        if a.distance(b) != 1 {
+            return PatternExtensionValidity::Invalid;
+        }
     }
 
     let len = pattern.len();
-    let new = pattern[len - 1];
-
-    // Nothing under a length of 4 can be valid
-    // len of 4 for the 3+ things in the loop and one more for the final one
-    if len < 4 {
-        return if len == 2 && pattern[0] == pattern[1] {
-            // No overlaps
-            PatternExtensionValidity::Invalid
-        } else if len <= 2 {
-            // Length of 2 and below is too short to be bad
-            // without overlaps
-            PatternExtensionValidity::Continue
-        } else if pattern[1..len - 1].contains(&new) {
-            // An overlap is always a no-go
-            // we know the len is 3 here so no OOB errors
-            PatternExtensionValidity::Invalid
-        } else {
-            // hey it might be ok
-            PatternExtensionValidity::Continue
-        };
-    }
-
-    let end = pattern[len - 2];
-
-    if end.distance(new) != 1 || pattern[1..len - 1].contains(&new) {
-        // No wild leaps
-        // No overlaps 'cept the first
-        PatternExtensionValidity::Invalid
-    } else if pattern[0] == new {
-        // We've closed the loop!
-        PatternExtensionValidity::Closing
-    } else {
-        // try some more
-        PatternExtensionValidity::Continue
+    match pattern.len() {
+        // Nothing under a length of 2 can be determined; there's not enough
+        // length to overlap or cross.
+        0..=2 => PatternExtensionValidity::Continue,
+        3 => {
+            if pattern.last() == pattern.first() {
+                // The player drew left then right, so the last overlaps the first
+                PatternExtensionValidity::Invalid
+            } else {
+                PatternExtensionValidity::Continue
+            }
+        }
+        _ => {
+            // If the proposed ending overlaps anything *except* the first, we fail.
+            // (We don't need to check every coordinate for every other coordinate because we guaranteed
+            // they are valid in previous calls of this function with shorter paths.)
+            let first = pattern.first().unwrap();
+            let last = pattern.last().unwrap();
+            let middle = &pattern[1..len - 1];
+            if middle.contains(last) {
+                // we cross somewhere in the middle
+                PatternExtensionValidity::Invalid
+            } else if first == last {
+                // we close the loop!
+                PatternExtensionValidity::Finished
+            } else {
+                PatternExtensionValidity::Continue
+            }
+        }
     }
 }
 
+/// Is this proposed addition to the pattern valid?
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum PatternExtensionValidity {
-    /// Add it on
+    /// It's valid, but it isn't a closed loop yet.
     Continue,
-    /// Don't add it on
+    /// This is in no way valid; don't consider it.
     Invalid,
-    /// We finished
-    Closing,
+    /// This is now a closed loop.
+    Finished,
 }
 
 #[derive(Debug, Clone, Copy)]

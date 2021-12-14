@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 use ahash::AHashMap;
 use cogs_gamedev::ease::Interpolator;
 use hex2d::{Coordinate, IntegerSpacing};
@@ -6,10 +8,10 @@ use macroquad::prelude::*;
 use crate::{
     assets::Assets,
     boilerplates::{FrameInfo, GamemodeDrawer},
-    model::{BoardAction, Marble},
+    model::{BoardAction, Marble, ScorePacket},
     utils::{
         draw::{hexcolor, mouse_position_pixel},
-        text::{Billboard, Markup, TextSpan},
+        text::{draw_pixel_text, Billboard, Markup, TextAlign, TextSpan},
     },
     HEIGHT, WIDTH,
 };
@@ -38,7 +40,9 @@ pub struct Drawer {
     pub next_action: Option<(BoardAction, u32)>,
 
     pub bg_funni_timer: f32,
+
     pub score: u32,
+    pub score_queue: Vec<ScorePacket>,
 
     pub paused: bool,
 
@@ -90,24 +94,37 @@ impl GamemodeDrawer for Drawer {
             assets,
         );
 
-        let text = format!("{}", self.score * 100);
-        let text_x = BOARD_CENTER_X - 5.0 * (text.len() as f32 - 1.0) / 2.0;
-        let text_y = BOARD_CENTER_Y - (self.radius as i32 * MARBLE_SPAN_Y) as f32;
-        Billboard::draw_now(
-            vec![TextSpan {
-                text,
-                markup: Markup {
-                    color: WHITE,
-                    font: assets.textures.fonts.small,
-                    kerning: 1.0,
-                    vert_space: 1.0,
-                    wave: None,
-                },
-            }],
-            vec2(text_x.round(), text_y.round()),
-            vec2(0.0, -5.0),
-            None,
+        let score = format!("{}", self.score * 100);
+        let text_x = BOARD_CENTER_X - 5.0 * (score.len() as f32 - 1.0) / 2.0;
+        let text_y = BOARD_CENTER_Y - (self.radius as i32 * MARBLE_SPAN_Y) as f32 - 10.0;
+        draw_pixel_text(
+            &score,
+            text_x,
+            text_y,
+            TextAlign::Left,
+            WHITE,
+            assets.textures.fonts.small,
         );
+        for (idx, packet) in self.score_queue.iter().enumerate() {
+            // we want the score part to line up with the main score.
+            // and the 1 char plus sign to hang over the edge.
+            // so we subtract 1
+            let text_x = text_x - 1.0 * 4.0;
+            let text_y = text_y - 6.0 * (1 + idx) as f32;
+            let text = if packet.multiplier == 1 {
+                format!("+{}", packet.base * 100)
+            } else {
+                format!("+{:2}x{}", packet.multiplier, packet.base * 100)
+            };
+            draw_pixel_text(
+                &text,
+                text_x,
+                text_y,
+                TextAlign::Left,
+                hexcolor(0xff5277_ff),
+                assets.textures.fonts.small,
+            );
+        }
 
         if self.paused {
             draw_rectangle(0.0, 0.0, WIDTH, HEIGHT, hexcolor(0x291d2b_a0));
