@@ -96,10 +96,13 @@ impl Board {
             self.gravitate();
 
             // This action likely moved some marbles, so let's reposition the spawnpoint
-            if let Some(next_sp) = self.planned_next_spawn_pos {
-                let shunted = self.gravity_all(next_sp);
-                self.planned_next_spawn_pos = Some(shunted);
-            }
+            // If we don't currently have a spawnpoint (aka, we *just* saved ourselves from losing),
+            // pretend it was at the center of the board.
+            let present_sp = self
+                .planned_next_spawn_pos
+                .unwrap_or_else(|| Coordinate::new(0, 0));
+            let shunted = self.gravity_all(present_sp);
+            self.planned_next_spawn_pos = Some(shunted);
         }
 
         self.tick_count += 1;
