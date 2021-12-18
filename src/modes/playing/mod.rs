@@ -13,7 +13,7 @@ use crate::{
     assets::Assets,
     boilerplates::{FrameInfo, Gamemode, GamemodeDrawer, Transition},
     controls::{Control, InputSubscriber},
-    model::{Board, BoardAction, BoardSettings, Marble},
+    model::{Board, BoardAction, BoardSettings, Marble, PlaySettings},
     utils::draw::mouse_position_pixel,
     HEIGHT, WIDTH,
 };
@@ -46,6 +46,8 @@ pub struct ModePlaying {
     pub paused: bool,
 
     pub settings: PlaySettings,
+
+    pub start_time: f64,
 }
 
 impl Gamemode for ModePlaying {
@@ -64,6 +66,7 @@ impl Gamemode for ModePlaying {
                     volume: 0.5,
                 },
             );
+            self.start_time = macroquad::time::get_time();
         }
 
         if self.paused {
@@ -143,6 +146,7 @@ impl ModePlaying {
             music,
             paused: false,
             settings: play_settings,
+            start_time: 0.0,
         }
     }
 
@@ -420,17 +424,4 @@ enum PatternExtensionValidity {
     Invalid,
     /// This is now a closed loop.
     Finished,
-}
-
-#[derive(Debug, Clone, Copy)]
-pub struct PlaySettings {
-    pub funni_background: bool,
-}
-
-impl Default for PlaySettings {
-    fn default() -> Self {
-        Self {
-            funni_background: true,
-        }
-    }
 }

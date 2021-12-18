@@ -4,20 +4,24 @@ use macroquad::prelude::warn;
 use quad_wasmnastics::storage::{self, Location};
 use serde::{Deserialize, Serialize};
 
-use crate::model::BoardSettingsModeKey;
+use crate::model::{BoardSettingsModeKey, PlaySettings};
 
 const SERIALIZATION_VERSION: &str = "1";
 
 /// Profile information. The `get` function loads it from storage; on drop it saves it back.
 #[derive(Serialize, Deserialize)]
 pub struct Profile {
+    #[serde(default)]
     pub highscores: HashMap<BoardSettingsModeKey, u32>,
+    #[serde(default)]
+    pub settings: PlaySettings,
 }
 
 impl Default for Profile {
     fn default() -> Self {
         Profile {
             highscores: HashMap::new(),
+            settings: PlaySettings::default(),
         }
     }
 }

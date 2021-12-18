@@ -1,3 +1,4 @@
+mod play_settings;
 mod text_displayer;
 
 use std::any::{Any, TypeId};
@@ -9,18 +10,18 @@ use crate::{
     assets::Assets,
     boilerplates::*,
     controls::{Control, InputSubscriber},
-    model::{BoardSettings, Marble},
+    model::{BoardSettings, PlaySettings},
     utils::{
         button::Button,
         draw::{self, hexcolor, mouse_position_pixel},
+        profile::Profile,
         text::{draw_pixel_text, TextAlign},
     },
     HEIGHT, WIDTH,
 };
 
-use self::text_displayer::ModeTextDisplayer;
+use self::{play_settings::ModePlaySettings, text_displayer::ModeTextDisplayer};
 
-use super::playing::PlaySettings;
 use super::ModePlaying;
 
 /// How often new hexagons spawn.
@@ -65,7 +66,7 @@ impl Gamemode for ModeTitle {
         self.hexagons
             .retain(|(_, time)| hex_radius(*time) < WIDTH * 2.0);
 
-        let mut select_sound = false;
+        let mut enter_sound = false;
         let mut click_sound = false;
         for button in [
             &self.b_play,
@@ -75,16 +76,15 @@ impl Gamemode for ModeTitle {
             &self.b_credits,
         ] {
             if button.mouse_entered() {
-                select_sound = true;
-                if controls.clicked_down(Control::Click) {}
+                enter_sound = true;
             }
             if button.mouse_hovering() && controls.clicked_down(Control::Click) {
                 click_sound = true;
             }
         }
         if click_sound {
-            play_sound_once(assets.sounds.shunt);
-        } else if select_sound {
+            play_sound_once(assets.sounds.close_loop);
+        } else if enter_sound {
             play_sound_once(assets.sounds.select);
         }
 
@@ -98,6 +98,8 @@ impl Gamemode for ModeTitle {
                     assets,
                 )));
                 stop_sound(assets.sounds.title_music);
+            } else if self.b_settings.mouse_hovering() {
+                trans = Transition::Push(Box::new(ModePlaySettings::new(self.settings)));
             } else {
                 let message = if self.b_tutorial.mouse_hovering() {
                     let msg = format!(
@@ -185,6 +187,9 @@ GITHUB.COM/GAMMA-DELTA/HAXAGON",
             let data = &*data as &dyn Any;
             if data.is::<DontRestartMusicToken>() {
                 restart_music = false;
+            } else if let Some(settings) = data.downcast_ref() {
+                self.settings = *settings;
+                restart_music = false;
             }
         }
 
@@ -265,15 +270,21 @@ impl ModeTitle {
         let wide_w = 4.0 * 16.0;
         let wide_x = WIDTH / 2.0 - wide_w / 2.0;
 
+        let settings = {
+            let profile = Profile::get();
+            profile.settings
+        };
+
         Self {
             b_play: Button::new(x, y - y_stride, w, h),
-            b_mode_select: Button::new(x, y, w, h),
-            b_tutorial: Button::new(x, y + y_stride, w, h),
-            b_settings: Button::new(x, y + 2.0 * y_stride, w, h),
+            // high quality gaming
+            b_mode_select: Button::new(-1000.0, y, w, h),
+            b_tutorial: Button::new(x, y, w, h),
+            b_settings: Button::new(x, y + y_stride, w, h),
 
             b_credits: Button::new(wide_x, y + 4.0 * y_stride, wide_w, h),
 
-            settings: PlaySettings::default(),
+            settings,
 
             prev_hex_time: 0.0,
             hexagons: Vec::new(),

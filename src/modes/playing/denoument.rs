@@ -10,18 +10,18 @@ use crate::{
     assets::Assets,
     boilerplates::*,
     controls::{Control, InputSubscriber},
-    model::{BoardSettings, Marble},
+    model::{BoardSettings, Marble, PlaySettings},
     modes::playing::{BOARD_CENTER_X, BOARD_CENTER_Y, MARBLE_SIZE, MARBLE_SPAN_X, MARBLE_SPAN_Y},
     utils::{
         button::Button,
-        draw::{self, hexcolor},
+        draw::hexcolor,
         profile::Profile,
         text::{draw_pixel_text, TextAlign},
     },
     HEIGHT, WIDTH,
 };
 
-use super::{ModePlaying, PlaySettings};
+use super::ModePlaying;
 
 /// Transition between having just lost the game and the losing screen
 #[derive(Clone)]
@@ -36,6 +36,8 @@ pub struct ModeLosingTransition {
 
     board_settings: BoardSettings,
     play_settings: PlaySettings,
+
+    playtime: f64,
 }
 
 impl Gamemode for ModeLosingTransition {
@@ -153,6 +155,7 @@ impl ModeLosingTransition {
             prev_score,
             board_settings,
             play_settings: prev.settings,
+            playtime: macroquad::time::get_time() - prev.start_time,
         }
     }
 
@@ -187,6 +190,8 @@ pub struct ModeLosingScreen {
 
     b_again: Button,
     b_quit: Button,
+
+    playtime: f64,
 }
 
 impl Gamemode for ModeLosingScreen {
@@ -199,7 +204,7 @@ impl Gamemode for ModeLosingScreen {
         self.time += 1;
 
         if self.b_again.mouse_hovering() && controls.clicked_down(Control::Click) {
-            play_sound_once(assets.sounds.shunt);
+            play_sound_once(assets.sounds.close_loop);
             return Transition::Swap(Box::new(ModePlaying::new(
                 self.board_settings.clone(),
                 self.play_settings,
@@ -212,14 +217,14 @@ impl Gamemode for ModeLosingScreen {
             return Transition::Pop; // back to the title screen
         }
 
-        let mut any_change = false;
+        let mut play_sound = false;
         for b in [&mut self.b_again, &mut self.b_quit] {
-            if b.mouse_entered() || b.mouse_left() {
-                any_change = true;
+            if b.mouse_entered() {
+                play_sound = true;
             }
             b.post_update();
         }
-        if any_change {
+        if play_sound {
             play_sound_once(assets.sounds.select);
         }
 
@@ -241,6 +246,7 @@ impl GamemodeDrawer for ModeLosingScreen {
         let blight = hexcolor(0xff5277_ff);
 
         let text = match self.prev_score {
+            _ if cfg!(target_arch = "wasm32") => format!("GAME OVER\nSCORE: {}", self.score * 100,),
             Some(prev) if prev < self.score => format!(
                 "GAME OVER\nSCORE: {}\nNEW BEST! PREVIOUS: {}",
                 self.score * 100,
@@ -252,7 +258,11 @@ impl GamemodeDrawer for ModeLosingScreen {
                 prev * 100
             ),
             None => format!("GAME OVER\nSCORE: {}\n NEW BEST!", self.score * 100),
-        };
+        } + &format!(
+            "\n\nPLAY TIME: {}m {}s",
+            self.playtime as u32 / 60,
+            self.playtime as u32 % 60
+        );
 
         draw_pixel_text(
             &text,
@@ -306,10 +316,11 @@ impl ModeLosingScreen {
             score: prev.score,
             prev_score: prev.prev_score,
             board_settings: prev.board_settings.clone(),
-            play_settings: prev.play_settings.clone(),
+            play_settings: prev.play_settings,
             time: 0,
             b_again: Button::new(x, HEIGHT / 2.0 + 3.0, w, 9.0),
             b_quit: Button::new(x, HEIGHT / 2.0 + 14.0, w, 9.0),
+            playtime: prev.playtime,
         }
     }
 }

@@ -72,7 +72,11 @@ impl Board {
                 self.action_queue.push_back(BoardAction::ClearBlobs(1));
                 self.planned_next_spawn_pos = self.find_next_spawnpoint(sp);
             } else {
-                // oh no we couldn't find a place to be
+                // oh no we couldn't find a place to be.
+                // reify all the pending score packets
+                while let Some(pkt) = self.score_queue.pop_front() {
+                    self.score += pkt.base * pkt.multiplier;
+                }
                 return true;
             }
         }
@@ -585,4 +589,19 @@ pub enum BoardSettingsModeKey {
     Classic,
     Advanced,
     NoGravity,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub struct PlaySettings {
+    pub funni_background: bool,
+    pub animations: bool,
+}
+
+impl Default for PlaySettings {
+    fn default() -> Self {
+        Self {
+            funni_background: true,
+            animations: true,
+        }
+    }
 }

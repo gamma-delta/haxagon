@@ -1,6 +1,3 @@
-use std::collections::VecDeque;
-
-use ahash::AHashMap;
 use cogs_gamedev::ease::Interpolator;
 use hex2d::{Coordinate, IntegerSpacing};
 use macroquad::prelude::*;
@@ -8,7 +5,7 @@ use macroquad::prelude::*;
 use crate::{
     assets::Assets,
     boilerplates::{FrameInfo, GamemodeDrawer},
-    model::{BoardAction, Marble, ScorePacket},
+    model::{BoardAction, Marble, PlaySettings, ScorePacket},
     utils::{
         draw::{hexcolor, mouse_position_pixel},
         text::{draw_pixel_text, Billboard, Markup, TextAlign, TextSpan},
@@ -16,9 +13,7 @@ use crate::{
     HEIGHT, WIDTH,
 };
 
-use super::{
-    PlaySettings, BOARD_CENTER_X, BOARD_CENTER_Y, MARBLE_SIZE, MARBLE_SPAN_X, MARBLE_SPAN_Y,
-};
+use super::{BOARD_CENTER_X, BOARD_CENTER_Y, MARBLE_SIZE, MARBLE_SPAN_X, MARBLE_SPAN_Y};
 
 /// Speed for one on or off of the blink
 const CLEAR_ALL_BLINK_SPEED: u32 = 10;
@@ -91,6 +86,7 @@ impl GamemodeDrawer for Drawer {
             self.pattern
                 .as_ref()
                 .map(|v| (v.as_slice(), mouse_position_pixel().into())),
+            self.settings,
             assets,
         );
 
@@ -157,6 +153,7 @@ pub fn draw_marble_board(
     to_remove: &[Coordinate],
     spawnpoint: Option<Coordinate>,
     path: Option<(&[Coordinate], Vec2)>,
+    settings: PlaySettings,
     assets: &Assets,
 ) {
     for bg_pos in Coordinate::new(0, 0).range_iter(radius as _) {
@@ -204,7 +201,9 @@ pub fn draw_marble_board(
         };
 
         let (corner_x, corner_y) = match next_action {
-            Some((BoardAction::Cycle(path), timer)) if path.contains(pos) => {
+            Some((BoardAction::Cycle(path), timer))
+                if settings.animations && path.contains(pos) =>
+            {
                 let idx = path
                     .iter()
                     .enumerate()
