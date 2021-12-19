@@ -1,3 +1,4 @@
+use ahash::AHashMap;
 use cogs_gamedev::controls::EventInputHandler;
 use enum_map::Enum;
 use macroquad::{
@@ -7,8 +8,6 @@ use macroquad::{
         KeyCode, MouseButton,
     },
 };
-
-use std::collections::HashMap;
 
 /// The controls
 #[derive(Enum, Copy, Clone)]
@@ -42,8 +41,8 @@ impl InputSubscriber {
         }
     }
 
-    pub fn default_controls() -> HashMap<InputCode, Control> {
-        let mut controls = HashMap::new();
+    pub fn default_controls() -> AHashMap<InputCode, Control> {
+        let mut controls = AHashMap::new();
 
         // Put your controls here
         controls.insert(InputCode::Mouse(MouseButton::Left), Control::Click);
