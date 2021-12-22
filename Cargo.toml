@@ -34,3 +34,19 @@ thread_loop = ["crossbeam"]
 
 [profile.dev.package.'*']
 opt-level = 3
+
+[profile.release]
+debug = 2
+
+[package.metadata.android]
+assets = "assets/"
+res = "android_res"
+icon = "@mipmap/ic_launcher"
+
+label = "Haxagon"
+
+opengles_version_major = 3
+opengles_version_minor = 1
+
+[package.metadata.android.application_attributes]
+"android:isGame" = "true"

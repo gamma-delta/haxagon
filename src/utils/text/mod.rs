@@ -3,9 +3,9 @@
 mod billboard;
 pub use billboard::Billboard;
 use itertools::Itertools;
-use macroquad::prelude::{draw_texture_ex, Color, DrawTextureParams, Rect, Texture2D, WHITE};
+use macroquad::prelude::{draw_texture_ex, Color, DrawTextureParams, Rect, Texture2D};
 
-use crate::assets::{self, Assets};
+
 
 /// Number of printable characters in an ASCII charset (including the non-printing character).
 pub const CHARACTER_COUNT: usize = 96;

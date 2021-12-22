@@ -1,4 +1,4 @@
-use std::{f64::consts::TAU, iter::FlatMap};
+use std::{f64::consts::TAU};
 
 use anyhow::{bail, Context};
 use macroquad::prelude::{vec2, Color, Rect, Texture2D, Vec2, WHITE};
@@ -6,7 +6,6 @@ use once_cell::sync::Lazy;
 use regex::Regex;
 
 use crate::{
-    assets::Assets,
     utils::{
         draw,
         text::{Markup, Wave},

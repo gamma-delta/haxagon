@@ -9,7 +9,7 @@ use crate::model::{BoardSettingsModeKey, PlaySettings};
 const SERIALIZATION_VERSION: &str = "1";
 
 /// Profile information. The `get` function loads it from storage; on drop it saves it back.
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Default)]
 pub struct Profile {
     #[serde(default)]
     pub highscores: HashMap<BoardSettingsModeKey, u32>,
@@ -17,26 +17,18 @@ pub struct Profile {
     pub settings: PlaySettings,
 }
 
-impl Default for Profile {
-    fn default() -> Self {
-        Profile {
-            highscores: HashMap::new(),
-            settings: PlaySettings::default(),
-        }
-    }
-}
-
 impl Profile {
     pub fn get() -> Profile {
-        let maybe_profile: anyhow::Result<Profile> = try {
+        let maybe_profile: anyhow::Result<Profile> = (|| {
             // note we save the raw bincode! it's already gzipped!
             // if we gzipped it here it would jut be gzipped twice
             let data = storage::load_from(&Location {
                 version: String::from(SERIALIZATION_VERSION),
                 ..Default::default()
             })?;
-            bincode::deserialize(&data)?
-        };
+            let profile = bincode::deserialize(&data)?;
+            Ok(profile)
+        })();
         match maybe_profile {
             Ok(it) => it,
             Err(oh_no) => {
@@ -49,7 +41,7 @@ impl Profile {
 
 impl Drop for Profile {
     fn drop(&mut self) {
-        let res: anyhow::Result<()> = try {
+        let res: anyhow::Result<()> = (|| {
             let data = bincode::serialize(self)?;
             storage::save_to(
                 &data,
@@ -57,8 +49,9 @@ impl Drop for Profile {
                     version: String::from(SERIALIZATION_VERSION),
                     ..Default::default()
                 },
-            )?
-        };
+            )?;
+            Ok(())
+        })();
         if let Err(oh_no) = res {
             warn!("Couldn't save profile!\n{:?}", oh_no);
         }

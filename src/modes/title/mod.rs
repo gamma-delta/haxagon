@@ -1,7 +1,7 @@
 mod play_settings;
 mod text_displayer;
 
-use std::any::{Any, TypeId};
+use std::any::{Any};
 
 use cogs_gamedev::controls::InputHandler;
 use macroquad::{audio::*, prelude::*};
@@ -13,7 +13,7 @@ use crate::{
     model::{BoardSettings, PlaySettings},
     utils::{
         button::Button,
-        draw::{self, hexcolor, mouse_position_pixel},
+        draw::{hexcolor, mouse_position_pixel},
         profile::Profile,
         text::{draw_pixel_text, TextAlign},
     },
@@ -48,7 +48,7 @@ impl Gamemode for ModeTitle {
     fn update(
         &mut self,
         controls: &InputSubscriber,
-        frame_info: FrameInfo,
+        _frame_info: FrameInfo,
         assets: &Assets,
     ) -> Transition {
         if controls.clicked_down(Control::Click) {
@@ -206,7 +206,7 @@ GITHUB.COM/GAMMA-DELTA/HAXAGON",
 }
 
 impl GamemodeDrawer for ModeTitle {
-    fn draw(&self, assets: &Assets, frame_info: FrameInfo) {
+    fn draw(&self, assets: &Assets, _frame_info: FrameInfo) {
         clear_background(hexcolor(0x14182e_ff));
 
         if self.settings.funni_background {

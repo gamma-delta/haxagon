@@ -43,8 +43,8 @@ pub struct ModeLosingTransition {
 impl Gamemode for ModeLosingTransition {
     fn update(
         &mut self,
-        controls: &InputSubscriber,
-        frame_info: FrameInfo,
+        _controls: &InputSubscriber,
+        _frame_info: FrameInfo,
         assets: &Assets,
     ) -> Transition {
         if self.time == 0 {
@@ -71,7 +71,7 @@ impl Gamemode for ModeLosingTransition {
 }
 
 impl GamemodeDrawer for ModeLosingTransition {
-    fn draw(&self, assets: &Assets, frame_info: FrameInfo) {
+    fn draw(&self, assets: &Assets, _frame_info: FrameInfo) {
         clear_background(hexcolor(0x14182e_ff));
         // No need to draw background ticks cause they'll all be filled.
 
@@ -198,7 +198,7 @@ impl Gamemode for ModeLosingScreen {
     fn update(
         &mut self,
         controls: &InputSubscriber,
-        frame_info: FrameInfo,
+        _frame_info: FrameInfo,
         assets: &Assets,
     ) -> Transition {
         self.time += 1;
@@ -237,7 +237,7 @@ impl Gamemode for ModeLosingScreen {
 }
 
 impl GamemodeDrawer for ModeLosingScreen {
-    fn draw(&self, assets: &Assets, frame_info: FrameInfo) {
+    fn draw(&self, assets: &Assets, _frame_info: FrameInfo) {
         clear_background(hexcolor(0x14182e_ff));
 
         let color = hexcolor(0x4b1d52_ff);

@@ -1,5 +1,3 @@
-#![feature(try_blocks)]
-
 mod assets;
 mod boilerplates;
 mod controls;
@@ -34,11 +32,9 @@ const UPDATE_DT: f32 = 1.0 / (30.0 * UPDATES_PER_DRAW as f32);
 
 /// The `macroquad::main` macro uses this.
 fn window_conf() -> Conf {
-    let small =
-        Image::from_file_with_format(include_bytes!("../assets/textures/icon/16.png"), None);
-    let medium =
-        Image::from_file_with_format(include_bytes!("../assets/textures/icon/32.png"), None);
-    let big = Image::from_file_with_format(include_bytes!("../assets/textures/icon/64.png"), None);
+    let small = Image::from_file_with_format(include_bytes!("../icons/16.png"), None);
+    let medium = Image::from_file_with_format(include_bytes!("../icons/32.png"), None);
+    let big = Image::from_file_with_format(include_bytes!("../icons/64.png"), None);
     Conf {
         window_title: if cfg!(debug_assertions) {
             concat!(env!("CARGO_CRATE_NAME"), " v", env!("CARGO_PKG_VERSION"))

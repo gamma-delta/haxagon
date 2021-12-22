@@ -159,6 +159,11 @@ impl Shaders {
 static ASSETS_ROOT: Lazy<PathBuf> = Lazy::new(|| {
     if cfg!(target_arch = "wasm32") {
         PathBuf::from("./assets")
+    } else if cfg!(target_os = "android") {
+        // does have to be "" and not "."
+        // i guess android doesn't like dots in its paths
+        // probably rolls its own filesystem path impl
+        PathBuf::from("")
     } else if cfg!(debug_assertions) {
         PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/assets"))
     } else {

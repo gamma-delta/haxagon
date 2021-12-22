@@ -1,10 +1,10 @@
 use ahash::AHashMap;
-use cogs_gamedev::{controls::InputHandler, grids::Coord};
-use hex2d::{Angle, Coordinate, Spacing};
+use cogs_gamedev::{controls::InputHandler};
+use hex2d::{Angle, Coordinate};
 use itertools::Itertools;
 use macroquad::{
     audio::{play_sound, stop_sound, PlaySoundParams, Sound},
-    prelude::{mouse_position, vec2, Mat2},
+    prelude::{vec2, Mat2},
 };
 use quad_rand::compat::QuadRand;
 use rand::Rng;
@@ -54,7 +54,7 @@ impl Gamemode for ModePlaying {
     fn update(
         &mut self,
         controls: &InputSubscriber,
-        frame_info: FrameInfo,
+        _frame_info: FrameInfo,
         assets: &Assets,
     ) -> Transition {
         if !self.played_music {

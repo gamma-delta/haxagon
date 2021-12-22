@@ -24,7 +24,7 @@ pub trait Gamemode: Any {
     /// either from being pushed there or revealed after a pop.
     ///
     /// If the `PopWith` variant of `Transition` was used, this contains the data popped.
-    fn on_reveal(&mut self, passed: Option<Box<dyn Any>>, assets: &Assets) {}
+    fn on_reveal(&mut self, _passed: Option<Box<dyn Any>>, _assets: &Assets) {}
 }
 
 /// Data on how to draw a state

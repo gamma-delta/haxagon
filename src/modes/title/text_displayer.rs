@@ -1,7 +1,7 @@
 use cogs_gamedev::controls::InputHandler;
 use macroquad::{
     audio::play_sound_once,
-    prelude::{clear_background, vec2, Color, Vec2},
+    prelude::{clear_background, Color},
 };
 
 use crate::{
@@ -11,7 +11,7 @@ use crate::{
     utils::{
         button::Button,
         draw::hexcolor,
-        text::{draw_pixel_text, Billboard, TextAlign},
+        text::{draw_pixel_text, TextAlign},
     },
     HEIGHT, WIDTH,
 };
@@ -29,7 +29,7 @@ impl Gamemode for ModeTextDisplayer {
     fn update(
         &mut self,
         controls: &InputSubscriber,
-        frame_info: FrameInfo,
+        _frame_info: FrameInfo,
         assets: &Assets,
     ) -> Transition {
         if (self.b_back.mouse_hovering() && controls.clicked_down(Control::Click))
@@ -52,7 +52,7 @@ impl Gamemode for ModeTextDisplayer {
 }
 
 impl GamemodeDrawer for ModeTextDisplayer {
-    fn draw(&self, assets: &Assets, frame_info: FrameInfo) {
+    fn draw(&self, assets: &Assets, _frame_info: FrameInfo) {
         clear_background(self.bg_color);
 
         let color = hexcolor(0x4b1d52_ff);

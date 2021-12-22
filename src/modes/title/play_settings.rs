@@ -1,6 +1,6 @@
 use cogs_gamedev::controls::InputHandler;
 use macroquad::{
-    audio::{play_sound, play_sound_once},
+    audio::{play_sound_once},
     prelude::*,
 };
 
@@ -14,7 +14,7 @@ use crate::{
         profile::Profile,
         text::{draw_pixel_text, TextAlign},
     },
-    Assets, HEIGHT, WIDTH,
+    Assets, HEIGHT,
 };
 
 #[derive(Debug, Clone)]
@@ -31,7 +31,7 @@ impl Gamemode for ModePlaySettings {
     fn update(
         &mut self,
         controls: &InputSubscriber,
-        frame_info: FrameInfo,
+        _frame_info: FrameInfo,
         assets: &Assets,
     ) -> Transition {
         if controls.clicked_down(Control::Click) {
@@ -80,7 +80,7 @@ impl Gamemode for ModePlaySettings {
 }
 
 impl GamemodeDrawer for ModePlaySettings {
-    fn draw(&self, assets: &Assets, frame_info: FrameInfo) {
+    fn draw(&self, assets: &Assets, _frame_info: FrameInfo) {
         clear_background(hexcolor(0x14182e_ff));
 
         let color = hexcolor(0x4b1d52_ff);

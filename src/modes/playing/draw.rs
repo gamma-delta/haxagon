@@ -45,7 +45,7 @@ pub struct Drawer {
 }
 
 impl GamemodeDrawer for Drawer {
-    fn draw(&self, assets: &Assets, frame_info: FrameInfo) {
+    fn draw(&self, assets: &Assets, _frame_info: FrameInfo) {
         clear_background(hexcolor(0x14182e_ff));
 
         if self.settings.funni_background {
